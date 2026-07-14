@@ -22,15 +22,6 @@ export const login = (data: LoginParams) => {
   })
 }
 
-export interface VerifyResult {
-  is_valid: boolean
-  username: string
-  expires_at?: number
-}
-
-export const verifyToken = () => {
-  return http.get<VerifyResult>('/wx/auth/verify')
-}
 let qrCodeIntervalId:number = 0;
 let qrCodeCounter = 0;
 

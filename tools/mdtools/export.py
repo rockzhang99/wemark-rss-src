@@ -1,4 +1,3 @@
-from .md2doc import MarkdownToWordConverter
 from core.models import Article
 from core.db import DB
 from datetime import datetime, timezone
@@ -10,31 +9,25 @@ from core.print import print_success,print_error
 from jobs.notice import sys_notice
 
 def process_single_article(art, add_title, remove_images, remove_links, export_md, 
-                          export_docx, export_json, export_csv, export_pdf, 
-                          docx_path, writer):
+                          export_json, export_csv, docx_path, writer):
     """
     处理单篇文章的导出逻辑
-    重构：
-    - export_docx 使用 pdf2docx 转换（先生成 PDF，再转为 DOCX）
     - export_md 使用 html2doc (html2markdown) 转换
-    - export_pdf 使用原有的 PDF 转换
     返回是否成功处理
     """
     from core.content_format import format_content
     from core.common.file_tools import sanitize_filename
     
     # 检查是否需要导出任何格式的文件
-    if not (export_md or export_docx or export_json or export_csv or export_pdf):
+    if not (export_md or export_json or export_csv):
         return False
     
     print(art.id, art.title, art.id)
     
     # 生成文件名
     name = datetime.fromtimestamp(art.publish_time, tz=timezone.utc).strftime("%Y%m%d") + "_" + art.title
-    filename = sanitize_filename(name) + ".docx"
     json_filename = sanitize_filename(name) + ".json"
     md_filename = sanitize_filename(name) + ".md"
-    pdf_filename = sanitize_filename(name) + ".pdf"
     
     # JSON 内容
     json_content = {
@@ -80,54 +73,7 @@ def process_single_article(art, add_title, remove_images, remove_links, export_m
             except Exception as e:
                 print_error(f"HTML转Markdown失败: {e}")
         
-        # 步骤2: 生成 PDF（如果需要导出 DOCX 或 PDF）
-        pdf_generated = False
-        if export_docx or export_pdf:
-            try:
-                from tools.mdtools.pdf import url_to_pdf
-                pdf_full_path = f"{docx_path}{pdf_filename}"
-                from core.config import cfg
-                browser_type = cfg.get("gather.browser_type", "webkit")
-                port=cfg.get("port","8001")
-                url=art.url if art.content =="" else f"http://127.0.0.1:{port}/views/print/{art.id}"
-                url_to_pdf(url, pdf_full_path, browser_type=str(browser_type))
-                
-                # 验证PDF文件是否生成
-                if not os.path.exists(pdf_full_path):
-                    raise RuntimeError(f"PDF文件生成失败: {pdf_full_path}")
-                
-                print_success(f"PDF文件已生成: {pdf_filename}")
-                pdf_generated = True
-                
-            except ImportError as e:
-                print_error(f"PDF转换依赖缺失: {e}")
-            except Exception as e:
-                print_error(f"PDF转换失败: {e}")
-        
-        # 步骤3: 导出 DOCX（使用 pdf2docx）
-        docx_generated = False
-        if export_docx and pdf_generated:
-            try:
-                from tools.mdtools.pdf_extractor import pdf_to_docx
-                
-                pdf_full_path = f"{docx_path}{pdf_filename}"
-                docx_full_path = f"{docx_path}{filename}"
-                
-                # 从 PDF 转换为 DOCX（优先使用 pdf2docx 库）
-                success = pdf_to_docx(pdf_full_path, docx_full_path)
-                
-                if success:
-                    print_success(f"DOCX文件已生成: {filename}")
-                    docx_generated = True
-                else:
-                    print_error(f"DOCX文件生成失败: {filename}")
-                    
-            except ImportError as e:
-                print_error(f"pdf2docx依赖缺失: {e}")
-            except Exception as e:
-                print_error(f"PDF转DOCX失败: {e}")
-        
-        # 步骤4: 保存 JSON 文件（如果需要）
+        # 步骤2: 保存 JSON 文件（如果需要）
         json_generated = False
         if export_json:
             try:
@@ -155,8 +101,6 @@ def process_single_article(art, add_title, remove_images, remove_links, export_m
         exported_files = []
         if json_generated: exported_files.append("JSON")
         if md_generated: exported_files.append("MD")
-        if docx_generated: exported_files.append("DOCX")
-        if pdf_generated: exported_files.append("PDF")
         if csv_generated: exported_files.append("CSV")
         
         if exported_files:
@@ -172,15 +116,17 @@ def process_single_article(art, add_title, remove_images, remove_links, export_m
 
 def process_articles(session, mp_id=None,doc_id=None, page_size=10, page_count=1, add_title=True, document_id=None,
                     remove_images=False, remove_links=False, export_md=True, 
-                    export_docx=True, export_json=True, export_csv=True, export_pdf=True,
-                    docx_path="./data/docs/", writer=None):
+                    export_json=True, export_csv=True,
+                    docx_path="./data/docs/", writer=None, total=None, progress_callback=None):
     """
     处理文章数据的核心函数
     返回处理的文章数量
+    progress_callback(done, total): 每处理一篇文章回调一次，用于上报进度
     """
     record_count = 0
     i = 0
     is_break=False
+    done = 0
     while True:
         if is_break:
             break
@@ -205,14 +151,20 @@ def process_articles(session, mp_id=None,doc_id=None, page_size=10, page_count=1
             
         for art in arts:
             if process_single_article(art, add_title, remove_images, remove_links, 
-                                    export_md, export_docx, export_json, export_csv, 
-                                    export_pdf, docx_path, writer):
+                                    export_md, export_json, export_csv, 
+                                    docx_path, writer):
                 record_count += 1
+            done += 1
+            if progress_callback:
+                try:
+                    progress_callback(done, total)
+                except Exception:
+                    pass
     
     return record_count
 
 def export_md_to_doc(mp_id:str=None,doc_id:list=None,page_size:int=10,page_count:int=1,add_title=True,remove_images:bool=True,remove_links:bool=False
-                     ,export_md:bool=False,export_docx:bool=False,export_json:bool=False,export_csv:bool=False,export_pdf:bool=True,domain="",zip_filename=None,zip_file=True):
+                     ,export_md:bool=False,export_json:bool=False,export_csv:bool=False,domain="",zip_filename=None,zip_file=True,progress_callback=None):
     session = DB.get_session()
     if mp_id==None:
         raise ValueError("公众号ID不能为空")
@@ -220,6 +172,27 @@ def export_md_to_doc(mp_id:str=None,doc_id:list=None,page_size:int=10,page_count
     if not os.path.exists(docx_path):
         os.makedirs(docx_path)
     csv_filename = f"{docx_path}articles.csv"
+
+    # 导出“全部”文章（mp_id 为空且无指定 doc_id）时，不受页数限制，导出所有文章
+    effective_page_count = 0 if (not mp_id and not doc_id) else page_count
+
+    # 计算文章总数用于进度展示
+    # 用真实文章数做分母，避免 done 远超估算值导致进度超过 100%
+    total = 0
+    try:
+        _q = session.query(Article.id).filter(Article.content != None).where(Article.status == 1)
+        if mp_id:
+            _q = _q.where(Article.mp_id.in_(mp_id.split(",")))
+        if doc_id:
+            _q = _q.where(Article.id.in_(doc_id))
+        real_total = _q.count()
+        if effective_page_count and effective_page_count > 0:
+            # 实际最多处理 effective_page_count*page_size 篇，取较小值作为进度分母
+            total = min(effective_page_count * page_size, real_total)
+        else:
+            total = real_total
+    except Exception:
+        total = 0
     
     # 初始化CSV文件和writer（仅在需要导出CSV时）
     csv_file = None
@@ -235,17 +208,17 @@ def export_md_to_doc(mp_id:str=None,doc_id:list=None,page_size:int=10,page_count
         mp_id=mp_id,
         doc_id=doc_id,
         page_size=page_size,
-        page_count=page_count,
+        page_count=effective_page_count,
         add_title=add_title,
         remove_images=remove_images,
         remove_links=remove_links,
         export_md=export_md,
-        export_docx=export_docx,
         export_json=export_json,
         export_csv=export_csv,
-        export_pdf=export_pdf,
         docx_path=docx_path,
-        writer=writer
+        writer=writer,
+        total=total,
+        progress_callback=progress_callback
     )
     
     # 关闭CSV文件（如果打开了）

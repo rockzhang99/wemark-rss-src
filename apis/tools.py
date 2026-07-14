@@ -8,15 +8,20 @@ from .base import success_response, error_response,BaseResponse
 from datetime import datetime
 from typing import Optional, List, Literal
 import os
+import time
 import threading
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import io
 import uuid
 import base64
+from core.print import print_error
 
 # 导入导出工具
 from tools.mdtools.export import export_md_to_doc, process_articles
+
+# 导出任务状态登记表（内存）：mp_id -> 任务状态
+EXPORT_TASKS: dict = {}
 
 # 图片处理
 from PIL import Image
@@ -34,10 +39,8 @@ class ExportArticlesRequest(BaseModel):
     remove_images: bool = Field(True, description="是否移除图片")
     remove_links: bool = Field(False, description="是否移除链接")
     export_md: bool = Field(False, description="是否导出Markdown格式")
-    export_docx: bool = Field(False, description="是否导出Word文档格式")
     export_json: bool = Field(False, description="是否导出JSON格式")
     export_csv: bool = Field(False, description="是否导出CSV格式")
-    export_pdf: bool = Field(True, description="是否导出PDF格式")
     zip_filename: Optional[str] = Field(None, description="压缩包文件名，为空则自动生成", example="")
 
 class ExportArticlesResponse(BaseModel):
@@ -53,6 +56,20 @@ class ExportFileInfo(BaseModel):
     created_time: str = Field(..., description="创建时间（ISO格式）")
     modified_time: str = Field(..., description="修改时间（ISO格式）")
 
+def _make_progress_callback(mp_id: str):
+    """生成进度回调，实时更新 EXPORT_TASKS 中该公众号的导出进度"""
+    def _cb(done: int, total: int):
+        task = EXPORT_TASKS.get(mp_id)
+        if task:
+            task["processed"] = done
+            if total:
+                task["total"] = total
+            # 裁剪到 [0,100]，避免 done 超过 total 时进度显示成几千%（如导出“全部”文章时）
+            task["percent"] = min(100, int(done / total * 100)) if total else 0
+            task["updated_at"] = time.time()
+    return _cb
+
+
 def _export_articles_worker(
     mp_id: str,
     doc_id: Optional[List[int]],
@@ -62,30 +79,43 @@ def _export_articles_worker(
     remove_images: bool,
     remove_links: bool,
     export_md: bool,
-    export_docx: bool,
     export_json: bool,
     export_csv: bool,
-    export_pdf: bool,
-    zip_filename: Optional[str]
+    zip_filename: Optional[str],
+    zip_file_path: str,
 ):
     """
-    导出文章的工作线程函数
+    导出文章的工作线程函数，执行完毕后更新任务状态
     """
-    return export_md_to_doc(
-        mp_id=mp_id,
-        doc_id=doc_id,
-        page_size=page_size,
-        page_count=page_count,
-        add_title=add_title,
-        remove_images=remove_images,
-        remove_links=remove_links,
-        export_md=export_md,
-        export_docx=export_docx,
-        export_json=export_json,
-        export_csv=export_csv,
-        export_pdf=export_pdf,
-        zip_filename=zip_filename
-    )
+    task = EXPORT_TASKS.get(mp_id)
+    try:
+        export_md_to_doc(
+            mp_id=mp_id,
+            doc_id=doc_id,
+            page_size=page_size,
+            page_count=page_count,
+            add_title=add_title,
+            remove_images=remove_images,
+            remove_links=remove_links,
+            export_md=export_md,
+            export_json=export_json,
+            export_csv=export_csv,
+            zip_filename=zip_filename,
+            progress_callback=_make_progress_callback(mp_id)
+        )
+        if task:
+            task["status"] = "done"
+            task["percent"] = 100
+            task["filename"] = os.path.basename(zip_file_path)
+            task["export_path"] = zip_file_path
+            task["updated_at"] = time.time()
+    except Exception as e:
+        if task:
+            task["status"] = "failed"
+            task["error"] = str(e)
+            task["updated_at"] = time.time()
+        print_error(f"导出文章失败: {e}")
+
 
 @router.post("/export/articles", summary="导出文章")
 async def export_articles(
@@ -93,7 +123,7 @@ async def export_articles(
     current_user: dict = Depends(get_current_user_or_ak)
 ):
     """
-    导出文章为多种格式（使用线程池异步处理）
+    导出文章为多种格式（使用后台线程异步处理，可通过 /export/status 查询进度）
     """
     try:
         # 检查是否已有相同 mp_id 的导出任务正在运行
@@ -101,12 +131,23 @@ async def export_articles(
             if thread.name == f"export_articles_{request.mp_id}":
                 return error_response(400, "该公众号的导出任务已在处理中，请勿重复点击")
                 
-        # 直接生成 zip_filename 并返回
         docx_path = f"./data/docs/{request.mp_id}/"
         if request.zip_filename:
             zip_file_path = f"{docx_path}{request.zip_filename}"
         else:
             zip_file_path = f"{docx_path}exported_articles_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
+        
+        # 初始化导出任务状态
+        EXPORT_TASKS[request.mp_id] = {
+            "status": "running",
+            "processed": 0,
+            "total": 0,
+            "percent": 0,
+            "filename": os.path.basename(zip_file_path),
+            "mp_id": request.mp_id,
+            "error": "",
+            "updated_at": time.time()
+        }
         
         # 启动后台线程执行导出操作
         export_thread = threading.Thread(
@@ -120,11 +161,10 @@ async def export_articles(
                 request.remove_images,
                 request.remove_links,
                 request.export_md,
-                request.export_docx,
                 request.export_json,
                 request.export_csv,
-                request.export_pdf,
-                request.zip_filename
+                request.zip_filename,
+                zip_file_path
             ),
             name=f"export_articles_{request.mp_id}"
         )
@@ -132,13 +172,35 @@ async def export_articles(
         
         return success_response({
             "export_path": zip_file_path,
-            "message": "导出任务已启动，请稍后下载文件"
+            "message": "导出任务已启动，请稍后下载文件",
+            "mp_id": request.mp_id
         })
             
     except ValueError as e:
         return error_response(400, str(e))
     except Exception as e:
         return error_response(500, f"导出失败: {str(e)}")
+
+
+@router.get("/export/status", summary="查询导出任务进度", response_model=BaseResponse)
+async def export_status(
+    mp_id: str = Query("", description="公众号ID，导出全部时为空字符串"),
+    current_user: dict = Depends(get_current_user_or_ak)
+):
+    """
+    查询指定公众号的导出任务进度（前端轮询以展示进度条）
+    """
+    # 导出“全部”时 mp_id 为空字符串，做归一化避免 None 取不到任务
+    mp_id = mp_id or ""
+    task = EXPORT_TASKS.get(mp_id)
+    if not task:
+        return success_response({
+            "status": "idle",
+            "percent": 0,
+            "processed": 0,
+            "total": 0
+        })
+    return success_response(task)
 
 @router.get("/export/download", summary="下载导出文件")
 async def download_export_file(
@@ -208,8 +270,9 @@ async def list_export_files(
     try:
         from .ver import API_VERSION
         safe_root = os.path.abspath(os.path.normpath("./data/docs"))
-        # Ensure mp_id is not None or empty
-       
+        # 归一化 mp_id：为空/None 时遍历 ./data/docs 下所有公众号的 zip
+        mp_id = mp_id or ""
+
         export_path = os.path.abspath(os.path.join(safe_root, mp_id))
         # Validate that export_path is within safe_root
         if not export_path.startswith(safe_root):
@@ -230,14 +293,15 @@ async def list_export_files(
                     file_path = os.path.join(root, filename)
                     try:
                         file_stat = os.stat(file_path)
-                        file_path = os.path.relpath(file_path, export_path)
+                        # 统一使用正斜杠，避免 Windows 反斜杠破坏 URL
+                        rel_path = os.path.relpath(file_path, export_path).replace(os.sep, "/")
                         files.append({
                         "filename": filename,
                         "size": file_stat.st_size,
                         "created_time": datetime.fromtimestamp(file_stat.st_ctime).isoformat(),
                         "modified_time": datetime.fromtimestamp(file_stat.st_mtime).isoformat(),
-                        "path": file_path,
-                        "download_url": f"{API_VERSION}/tools/export/download?mp_id={mp_id}&filename={file_path}"  # 下载链接
+                        "path": rel_path,
+                        "download_url": f"{API_VERSION}/tools/export/download?mp_id={mp_id}&filename={rel_path}"  # 下载链接
                     })
                     except PermissionError:
                         continue

@@ -346,7 +346,6 @@
 
 <script setup lang="ts">
 import { Avatar } from '@/utils/constants'
-import { translatePage, setCurrentLanguage } from '@/utils/translate';
 import { ref, onMounted, h, nextTick, watch, computed, resolveComponent } from 'vue'
 import axios from 'axios'
 import { IconApps, IconAtt, IconDelete, IconEdit, IconEye, IconRefresh, IconScan, IconWeiboCircleFill, IconWifi, IconCode, IconCheck, IconClose, IconStop, IconPlayArrow, IconCopy, IconPlus, IconDown, IconExport, IconImport, IconShareExternal, IconStar, IconStarFill, IconLink, IconSettings } from '@arco-design/web-vue/es/icon'

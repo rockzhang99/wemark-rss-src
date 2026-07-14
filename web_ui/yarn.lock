@@ -607,11 +607,6 @@ hasown@^2.0.2:
   dependencies:
     function-bind "^1.1.2"
 
-i18n-jsautotranslate@^3.17.0:
-  version "3.18.0"
-  resolved "https://registry.npmmirror.com/i18n-jsautotranslate/-/i18n-jsautotranslate-3.18.0.tgz"
-  integrity sha512-x7v1SQjrFoQI7oVbjGxwKcIN62YYVpK7wqvJiEidXQ5IcF4t5Z4xsR7s5x0lmIBzmORIQ4PCzusIGMRq0k3K1Q==
-
 is-arrayish@^0.3.1:
   version "0.3.2"
   resolved "https://registry.npmjs.org/is-arrayish/-/is-arrayish-0.3.2.tgz"

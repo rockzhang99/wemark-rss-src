@@ -2,7 +2,7 @@
 
 > 微信公众号文章抓取 · 下载 · 导出 · RSS 一站式解决方案
 
-`wemark-rss` 是一个用于**订阅与管理微信公众号内容**的工具，能够自动抓取公众号文章、生成 RSS 订阅源，并提供完善的 Web 管理后台。本项目由 `we-mp-rss` 重命名而来（所有 `we-mp-rss` 标识已统一替换为 `wemark-rss` / `WeMark-RSS`），作为你自己的仓库进行二次开发。
+`wemark-rss` 是一个用于**订阅与管理微信公众号内容**的工具，能够自动抓取公众号文章、生成 RSS 订阅源，并提供完善的 Web 管理后台。
 
 - 后端：Python 3.13 + FastAPI
 - 前端：Vue 3 + Vite + Arco Design / Ant Design Vue

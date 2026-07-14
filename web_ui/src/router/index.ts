@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { isTokenExpired } from '@/utils/auth'
 import BasicLayout from '../components/Layout/BasicLayout.vue'
 import ExportRecords from '../views/ExportRecords.vue'
 import Login from '../views/Login.vue'
@@ -281,24 +282,21 @@ router.beforeEach(async (to, from, next) => {
     })
   }
 
-  // 已登录状态，验证token有效性
-  try {
-    // 确保从正确路径导入verifyToken
-    const { verifyToken } = await import('@/api/auth')
-    await verifyToken()
-    next()
-  } catch (error) {
-    console.error('Token验证失败:', error)
-    // token无效时清除并跳转登录
+  // 本地校验 token 是否过期，避免每次导航都请求后端 verify_token，
+  // 从而防止网络抖动/后端瞬时错误被误判为 session 失效而强制登出。
+  // 真正的 token 失效由 http 拦截器对 401 响应兜底处理。
+  if (isTokenExpired()) {
     localStorage.removeItem('token')
-    next({
+    return next({
       path: '/login',
-      query: { 
+      query: {
         redirect: to.fullPath,
         error: 'session_expired'
       }
     })
   }
+
+  next()
 })
 
 export default router

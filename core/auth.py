@@ -69,7 +69,7 @@ def _load_or_generate_secret_key() -> str:
 SECRET_KEY = _load_or_generate_secret_key()
 
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = int(cfg.get("token_expire_minutes",30))
+ACCESS_TOKEN_EXPIRE_MINUTES = int(cfg.get("token_expire_minutes", 4320))
 
 class PasswordHasher:
     """自定义密码哈希器，替代passlib的CryptContext"""

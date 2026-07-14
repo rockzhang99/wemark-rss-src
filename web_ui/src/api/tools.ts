@@ -10,10 +10,8 @@ export const exportArticles = (params:any) => {
       remove_images: params.remove_images || false,
       remove_links: params.remove_links || false,
       export_md: params.format.includes('md'),
-      export_docx: params.format.includes('docx'),
       export_json: params.format.includes('json'),
       export_csv: params.format.includes('csv'),
-      export_pdf: params.format.includes('pdf'),
       zip_filename: params.zip_filename||''
     };
   return http.post<{code: number, data: string}>('/wx/tools/export/articles', requestData, {
@@ -36,4 +34,7 @@ export const DeleteExportRecords = (params:any) => {
       filename: params.filename,
     };
   return http.delete<{code: number, data: string}>('/wx/tools/export/delete', {data:requestData})
+}
+export const getExportStatus = (params:any) => {
+  return http.get<{code: number, data: any}>('/wx/tools/export/status', {params:{mp_id: params.mp_id}})
 }

@@ -66,6 +66,7 @@ export default defineConfig(({ command, mode }) => {
         "/api": {
           target: apiTarget,
           changeOrigin: true,
+          ws: true,
         },
       },
     },
