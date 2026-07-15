@@ -21,14 +21,14 @@ redis-server
 docker run -d -p 6379:6379 --name redis redis:7-alpine
 
 # 启动后端
-cd f:\Wx\WeRss\wemark-rss
+cd f:\Wx\WemarkRss\wemark-rss
 python main.py
 ```
 
 ### 2. 编译前端
 
 ```bash
-cd f:\Wx\WeRss\wemark-rss\web_ui
+cd f:\Wx\WemarkRss\wemark-rss\web_ui
 
 # 安装依赖（如果未安装）
 npm install

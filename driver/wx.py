@@ -227,7 +227,7 @@ class Wx:
                                 await asyncio.sleep(0.5)
                                 # 注意：切换成功后不立即关闭浏览器，让新的session有时间稳定
                                 # await self.Close()  # 移除此行，避免过早关闭导致session失效
-                                sys_notice(f"账号切换成功\n- 账号名称: {account_name} \n- 账号ID: {account_id} \n - Token: {token} \n- 过期时间: {exp_time}", str(cfg.get("server.code_title","WeRss账号切换成功")))
+                                sys_notice(f"账号切换成功\n- 账号名称: {account_name} \n- 账号ID: {account_id} \n - Token: {token} \n- 过期时间: {exp_time}", str(cfg.get("server.code_title","WemarkRss账号切换成功")))
                                 return True
                             else:
                                 print_warning("没有找到可切换的账号")

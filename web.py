@@ -85,7 +85,7 @@ app.add_middleware(AKMiddleware)
 async def add_custom_header(request: Request, call_next):
     response = await call_next(request)
     response.headers["X-Version"] = VERSION
-    response.headers["X-Powered-By"] = "Rachel"
+    response.headers["X-Powered-By"] = "YoruAki"
     response.headers["GITHUB"] = "https://github.com/wemark-rss/wemark-rss"
     response.headers["Server"] = cfg.get("app_name", "WeRSS")
     return response

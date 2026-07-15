@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>微信 RSS 订阅系统 · 操作说明</title>
+  <style>
+    :root {
+      --brand: #1ed760;
+      --brand-dark: #14b34d;
+      --ink: #1f2329;
+      --sub: #6b7280;
+      --bg: #f6f8f7;
+      --card: #ffffff;
+      --line: #e8ebed;
+      --code-bg: #f3faf5;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+        "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+      line-height: 1.7;
+    }
+    header.hero {
+      background: linear-gradient(135deg, #eafaf0 0%, #f6fbf8 100%);
+      border-bottom: 1px solid var(--line);
+      padding: 40px 20px 32px;
+      text-align: center;
+    }
+    header.hero h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      letter-spacing: 0.5px;
+    }
+    header.hero p {
+      margin: 0;
+      color: var(--sub);
+      font-size: 15px;
+    }
+    .wrap {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 24px 16px 64px;
+    }
+    /* 目录 */
+    .toc {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 18px 22px;
+      margin: 24px 0 8px;
+    }
+    .toc h2 { margin: 0 0 10px; font-size: 17px; }
+    .toc ol { margin: 0; padding-left: 20px; }
+    .toc a { color: var(--brand-dark); text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+    /* 步骤卡片 */
+    .step {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 24px 26px;
+      margin: 22px 0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    }
+    .step .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px; height: 30px;
+      background: var(--brand);
+      color: #06281a;
+      font-weight: 700;
+      border-radius: 50%;
+      margin-right: 10px;
+      font-size: 15px;
+    }
+    .step h2 {
+      display: flex;
+      align-items: center;
+      font-size: 20px;
+      margin: 0 0 14px;
+    }
+    .step p { margin: 8px 0; }
+    .step ul, .step ol { margin: 8px 0; padding-left: 22px; }
+    .step li { margin: 6px 0; }
+    code {
+      background: var(--code-bg);
+      color: var(--brand-dark);
+      padding: 2px 6px;
+      border-radius: 5px;
+      font-size: 13px;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+    .tip {
+      background: var(--code-bg);
+      border-left: 3px solid var(--brand);
+      padding: 10px 14px;
+      border-radius: 0 8px 8px 0;
+      margin: 14px 0;
+      font-size: 14px;
+      color: #345;
+    }
+    /* 截图占位 / 显示 */
+    figure.shot {
+      margin: 16px 0;
+      text-align: center;
+    }
+    figure.shot img {
+      max-width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    figure.shot figcaption {
+      margin-top: 8px;
+      font-size: 13px;
+      color: var(--sub);
+    }
+    .placeholder {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 180px;
+      border: 2px dashed var(--brand);
+      border-radius: 10px;
+      background: var(--code-bg);
+      color: var(--brand-dark);
+      font-size: 14px;
+      padding: 16px;
+      text-align: center;
+    }
+    .placeholder small { display:block; color: var(--sub); margin-top: 6px; font-size: 12px; }
+    footer {
+      text-align: center;
+      color: var(--sub);
+      font-size: 13px;
+      padding: 24px 16px 40px;
+    }
+    @media (max-width: 600px) {
+      header.hero h1 { font-size: 22px; }
+      .step { padding: 18px 16px; }
+      .step h2 { font-size: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <h1>微信 RSS 订阅系统 · 操作说明</h1>
+    <p>从微信扫码授权开始，到用阅读器消费公众号文章 —— 一份可迭代的图文手册</p>
+  </header>
+
+  <div class="wrap">
+    <!-- 目录 -->
+    <nav class="toc">
+      <h2>目录</h2>
+      <ol>
+        <li><a href="#step1">微信扫码授权（前置必做）</a></li>
+        <li><a href="#step2">添加公众号订阅</a></li>
+        <li><a href="#step3">抓取文章（自动 / 手动）</a></li>
+        <li><a href="#step4">配置新文章通知（WebHook）</a></li>
+        <li><a href="#step5">创建消息任务定时推送</a></li>
+        <li><a href="#step6">生成 RSS 链接，在阅读器中订阅</a></li>
+      </ol>
+    </nav>
+
+    <!-- 步骤 1 -->
+    <section class="step" id="step1">
+      <h2><span class="badge">1</span>微信扫码授权（前置必做）</h2>
+      <p>系统抓取公众号内容，依赖一个<strong>已登录的微信会话</strong>。所以第一步是完成授权。</p>
+      <ol>
+        <li>登录系统后，进入左侧菜单 <strong>授权管理</strong>（<code>/wechat-status</code>）。</li>
+        <li>在 <strong>订阅管理</strong> 页（首页 <code>/</code>）右上角点击「<strong>刷新授权</strong>」，会弹出一张<strong>二维码</strong>。</li>
+        <li>打开手机微信，使用「扫一扫」扫描该二维码并确认登录。</li>
+        <li>回到 <strong>授权管理</strong> 页，点击「刷新状态」，当状态显示为「<strong>已授权</strong>」即成功。</li>
+      </ol>
+      <div class="tip">授权会过期。过期后系统可通过你后续配置的通知渠道（见步骤 4、5）提醒你重新扫码。</div>
+
+      <figure class="shot">
+        <img src="images/step1-授权管理.png"
+             alt="授权管理页面"
+             onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
+        <div class="placeholder" style="display:none;">
+          截图：授权管理页面（显示「已授权 / 未授权」状态）
+          <small>放置路径：docs/images/step1-授权管理.png</small>
+        </div>
+        <figcaption>图 1-1　授权管理页面</figcaption>
+      </figure>
+
+      <figure class="shot">
+        <img src="images/step1-扫码二维码.png"
+             alt="刷新授权弹出的二维码"
+             onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
+        <div class="placeholder" style="display:none;">
+          截图：订阅管理页点「刷新授权」后弹出的二维码
+          <small>放置路径：docs/images/step1-扫码二维码.png</small>
+        </div>
+        <figcaption>图 1-2　刷新授权弹出的二维码</figcaption>
+      </figure>
+    </section>
+
+    <!-- 步骤 2 -->
+    <section class="step" id="step2">
+      <h2><span class="badge">2</span>添加公众号订阅</h2>
+      <p>授权完成后，就可以把想关注的公众号加进来。</p>
+      <ol>
+        <li>在 <strong>订阅管理</strong> 页（<code>/</code>）左侧栏点击「<strong>订阅</strong>」下拉，选择「<strong>添加公众号</strong>」（<code>/add-subscription</code>）。</li>
+        <li>有两种添加方式：
+          <ul>
+            <li><strong>方式 A · 通过文章链接获取</strong>：粘贴一篇该公众号的<strong>文章链接</strong>，点击「获取」，系统自动识别公众号。</li>
+            <li><strong>方式 B · 搜索名称</strong>：直接输入<strong>公众号名称</strong>搜索并选择。</li>
+          </ul>
+        </li>
+        <li>添加成功后，该公众号会出现在左侧列表中，点击即可查看其文章。</li>
+        <li>还支持「添加精选文章」「导出 / 导入公众号」「导出 OPML」等。</li>
+      </ol>
+
+      <figure class="shot">
+        <img src="images/step2-添加公众号.png"
+             alt="添加公众号页面"
+             onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
+        <div class="placeholder" style="display:none;">
+          截图：添加公众号页面（含文章链接 / 名称搜索两种入口）
+          <small>放置路径：docs/images/step2-添加公众号.png</small>
+        </div>
+        <figcaption>图 2-1　添加公众号页面</figcaption>
+      </figure>
+    </section>
+
+    <!-- 步骤 3 -->
+    <section class="step" id="step3">
+      <h2><span class="badge">3</span>抓取文章（自动 / 手动）</h2>
+      <p>公众号加好后，文章会自动或手动同步进来。</p>
+      <ul>
+        <li><strong>自动抓取</strong>：定时任务开启时（默认开启），系统按设定间隔自动轮询并更新文章。</li>
+        <li><strong>手动抓取</strong>：在订阅管理页选中某个公众号，点击右上角「<strong>刷新</strong>」立即抓取；「<strong>清理</strong>」可清除无效 / 重复 / 旧文章。</li>
+      </ul>
+
+      <figure class="shot">
+        <img src="images/step3-订阅管理列表.png"
+             alt="订阅管理页面文章列表"
+             onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
+        <div class="placeholder" style="display:none;">
+          截图：订阅管理页（左侧公众号列表 + 右侧文章表格 + 右上角刷新/清理）
+          <small>放置路径：docs/images/step3-订阅管理列表.png</small>
+        </div>
+        <figcaption>图 3-1　订阅管理页面</figcaption>
+      </figure>
+    </section>
+
+    <!-- 步骤 4 -->
+    <section class="step" id="step4">
+      <h2><span class="badge">4</span>配置新文章通知（WebHook）</h2>
+      <p>想在有新文章时收到提醒，需要先在「配置信息」里填好通知渠道。</p>
+      <ol>
+        <li>进入左侧菜单 <strong>配置信息</strong>（<code>/configs</code>）。</li>
+        <li>找到通知相关配置项，按需填写对应的 WebHook 地址：
+          <ul>
+            <li><code>notice.dingding</code> —— 钉钉机器人</li>
+            <li><code>notice.wechat</code> —— 企业微信 / 微信</li>
+            <li><code>notice.feishu</code> —— 飞书机器人</li>
+            <li><code>notice.custom</code> —— 自定义 WebHook</li>
+          </ul>
+        </li>
+        <li>也可通过环境变量（如 <code>DINGDING_WEBHOOK</code> 等）配置，具体见项目 README。</li>
+      </ol>
+      <div class="tip">只配置渠道还不够，还需在步骤 5 创建「消息任务」才会真正推送。</div>
+
+      <figure class="shot">
+        <img src="images/step4-配置通知.png"
+             alt="配置信息中的通知设置"
+             onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
+        <div class="placeholder" style="display:none;">
+          截图：配置信息页（notice.dingding / wechat / feishu / custom 输入框）
+          <small>放置路径：docs/images/step4-配置通知.png</small>
+        </div>
+        <figcaption>图 4-1　配置通知渠道</figcaption>
+      </figure>
+    </section>
+
+    <!-- 步骤 5 -->
+    <section class="step" id="step5">
+      <h2><span class="badge">5</span>创建消息任务定时推送</h2>
+      <p>消息任务负责把新文章按设定时间推送到上一步配置的渠道。</p>
+      <ol>
+        <li>进入左侧菜单 <strong>消息任务</strong>（<code>/message-tasks</code>）。</li>
+        <li>点击「<strong>添加任务</strong>」：选择<strong>推送类型</strong>（如 WebHook / 浏览器通知等），并设置 <strong>cron 定时</strong>规则。</li>
+        <li>保存后，任务会按 cron 定时把<strong>新文章</strong>推送到对应渠道。</li>
+        <li>同页面也可开启<strong>浏览器通知</strong>：开启后网页端会弹出新文章提醒（需浏览器授权通知权限）。</li>
+      </ol>
+
+      <figure class="shot">
+        <img src="images/step5-消息任务.png"
+             alt="消息任务列表与添加"
+             onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
+        <div class="placeholder" style="display:none;">
+          截图：消息任务页（添加任务弹窗：推送类型 + cron 设置）
+          <small>放置路径：docs/images/step5-消息任务.png</small>
+        </div>
+        <figcaption>图 5-1　创建消息任务</figcaption>
+      </figure>
+    </section>
+
+    <!-- 步骤 6 -->
+    <section class="step" id="step6">
+      <h2><span class="badge">6</span>生成 RSS 链接，在阅读器中订阅</h2>
+      <p>把公众号内容变成标准订阅源，用你习惯的阅读器消费。</p>
+      <ol>
+        <li>在订阅管理页选中某个公众号，点击右上角「<strong>订阅</strong>」下拉。</li>
+        <li>选择需要的格式链接：<code>RSS</code> / <code>ATOM</code> / <code>JSON</code> / <code>Markdown</code> / <code>Text</code>。</li>
+        <li>复制生成的链接（形如 <code>/feed/&lt;公众号ID&gt;.rss</code>），添加到任意 RSS 阅读器（推荐 <strong>folo</strong>）即可像普通订阅源一样消费。</li>
+      </ol>
+
+      <figure class="shot">
+        <img src="images/step6-生成RSS.png"
+             alt="生成 RSS / Atom 等订阅链接"
+             onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
+        <div class="placeholder" style="display:none;">
+          截图：订阅管理页「订阅」下拉（RSS/ATOM/JSON/Markdown/Text 链接）
+          <small>放置路径：docs/images/step6-生成RSS.png</small>
+        </div>
+        <figcaption>图 6-1　生成订阅链接</figcaption>
+      </figure>
+    </section>
+
+    <div class="tip">
+      <strong>最小上手路径</strong>：启动后端 → 登录 → <strong>授权管理扫码</strong> → <strong>添加公众号</strong> →
+      等几分钟或点刷新 → 在「<strong>消息任务</strong>」配一个 WebHook 通知 → 把 RSS 链接丢进阅读器。
+    </div>
+  </div>
+
+  <footer>
+    本文档为可迭代的图文手册 · 截图请放入 <code>docs/images/</code> 目录，文件名与文中一致即可自动显示
+  </footer>
+</body>
+</html>

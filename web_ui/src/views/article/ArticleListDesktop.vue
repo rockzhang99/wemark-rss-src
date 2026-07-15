@@ -1666,6 +1666,48 @@ const toggleFavoriteStatus = async (record: any) => {
   background: transparent !important;
 }
 
+/* ========== 紧凑化响应式 ========== */
+@media (max-width: 1100px) {
+  .article-list :deep(.arco-layout-sider) {
+    width: 240px !important;
+    min-width: 240px !important;
+  }
+}
+
+@media (max-width: 992px) {
+  .article-list :deep(.arco-layout-content) {
+    padding: 12px !important;
+  }
+
+  /* 顶部操作按钮换行，避免溢出 */
+  .article-list :deep(.arco-page-header-extra) .arco-space {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+
+  /* 搜索栏换行 */
+  .search-bar {
+    flex-wrap: wrap;
+  }
+
+  .search-input {
+    min-width: 140px;
+    flex: 1 1 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .article-list :deep(.arco-layout-sider) {
+    width: 200px !important;
+    min-width: 200px !important;
+  }
+
+  .article-list :deep(.arco-card-header) {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+}
+
 </style>
 <style>
 #article-model img {

@@ -20,6 +20,6 @@ import { ref, computed, onMounted, watch, provide } from 'vue'
 import Navbar from './Navbar.vue'
 const appTitle = computed(() => {
   const ip = window.location.hostname;
-  return `${import.meta.env.VITE_APP_COPYRIGHT || 'Power By Rachel Design'}@${ip}`;
+  return `${import.meta.env.VITE_APP_COPYRIGHT || 'Power By YoruAki Design'}@${ip}`;
 })
 </script>

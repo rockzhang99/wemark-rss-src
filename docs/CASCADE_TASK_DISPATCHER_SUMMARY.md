@@ -399,7 +399,7 @@ python test_cascade_task_dispatcher.py
 
 ```bash
 # 在项目根目录下
-f:\Wx\WeRss\wemark-rss>
+f:\Wx\WemarkRss\wemark-rss>
 
 # 运行分发器（子节点模式）
 python -m jobs.cascade_task_dispatcher child

@@ -87,7 +87,7 @@ def Success_Msg(data:dict,ext_data:dict={}):
     text+=f"- Token: {data['token']}\n"
     text+=f"- 有效时间: {data['expiry']['expiry_time']}\n"
     
-    sys_notice(text, str(cfg.get("server.code_title","WeRss授权完成")))
+    sys_notice(text, str(cfg.get("server.code_title","WemarkRss授权完成")))
 def Success(data:dict,ext_data:dict={}):
     if data != None:
             # print("\n登录结果:")

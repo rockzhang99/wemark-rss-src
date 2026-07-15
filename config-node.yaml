@@ -57,7 +57,7 @@ notice:
 
 #安全提示：生产环境请通过环境变量SECRET_KEY设置强随机密钥，不要使用默认值
 secret: ${SECRET_KEY}
-user_agent: ${USER_AGENT:-Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36/WeRss}
+user_agent: ${USER_AGENT:-Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36/WemarkRss}
 
 #定时任务执行每篇稿件间隔时间 单位秒 默认10s 允许值 1-60秒之间
 interval: ${SPAN_INTERVAL:- 10}
@@ -173,7 +173,7 @@ export:
 
 
 site:
-  name: ${SITE_NAME:-WeRss}
+  name: ${SITE_NAME:-WemarkRss}
   description: ${SITE_DESCRIPTION:-A WeChat Official Account RSS Reader}
   keywords: ${SITE_KEYWORDS:-}WeChat,Official Account,RSS,Reader
 

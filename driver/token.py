@@ -47,10 +47,10 @@ def set_token(data:any,ext_data:any=None):
     print_success(f"Token:{data.get('token')} \n到期时间:{data.get('expiry')['expiry_time']}\n")
     from jobs.notice import sys_notice
 
-#     sys_notice(f"""WeRss授权成功
+#     sys_notice(f"""WemarkRss授权成功
 # - Token: {data.get("token")}
 # - Expiry: {data.get("expiry")['expiry_time']}
-# """, str(cfg.get("server.code_title","WeRss授权成功")))
+# """, str(cfg.get("server.code_title","WemarkRss授权成功")))
 
 
 def _save_to_local(token_data: dict):

@@ -181,7 +181,7 @@ http://localhost:3000
 | `FEISHU_WEBHOOK` | 空 | 飞书通知Webhook地址 |
 | `CUSTOM_WEBHOOK` | 空 | 自定义通知Webhook地址 |
 | `SECRET_KEY` | `wemark-rss` | 密钥 |
-| `USER_AGENT` | `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36/WeRss` | 用户代理 |
+| `USER_AGENT` | `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36/WemarkRss` | 用户代理 |
 | `SPAN_INTERVAL` | `10` | 定时任务执行间隔（秒） |
 | `WEBHOOK.CONTENT_FORMAT` | `html` | 文章内容发送格式 |
 | `PORT` | `8001` | API服务端口 |

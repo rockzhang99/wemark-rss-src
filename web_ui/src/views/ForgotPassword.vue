@@ -97,7 +97,7 @@
     </div>
 
     <div class="forgot-footer">
-      <div class="copyright">Design By Rachel</div>
+      <p>Copyright © 2025-{{ new Date().getFullYear() }} WemarkRss微信公众号订阅助手. All Rights Reserved.</p>
     </div>
   </div>
 </template>

@@ -19,7 +19,7 @@ def send_wx_code(title: str = "", url: str = ""):
     if title:
         text += f"- 原因：{title}\n"
 
-    notice_title = str(cfg.get("server.code_title", "WeRss授权过期,扫码授权"))
+    notice_title = str(cfg.get("server.code_title", "WemarkRss授权过期,扫码授权"))
 
     if cfg.get("server.send_code", False):
         # send_code=True: 尝试获取二维码，通过回调发送含二维码的通知
@@ -46,7 +46,7 @@ def CallBackNotice(data=None, ext_data=None):
         try:
             sys_notice(
                 text=text,
-                title=str(cfg.get("server.code_title", "WeRss授权过期"))
+                title=str(cfg.get("server.code_title", "WemarkRss授权过期"))
             )
         except Exception as e:
             print_warning(f"发送二维码获取失败通知失败: {e}")
@@ -61,4 +61,4 @@ def CallBackNotice(data=None, ext_data=None):
     if WX_API.GetHasCode():
         text += f"![描述]({url})"
         text += f"\n- 请使用微信扫描二维码进行授权"
-    sys_notice(text, str(cfg.get("server.code_title", "WeRss授权过期,扫码授权")))
+    sys_notice(text, str(cfg.get("server.code_title", "WemarkRss授权过期,扫码授权")))
