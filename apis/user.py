@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from datetime import datetime
-from core.auth import get_current_user_or_ak
+from core.auth import get_current_user_or_ak, require_permissions
 from core.db import DB
 from core.models import User as DBUser
 from core.auth import pwd_context
@@ -30,6 +30,7 @@ async def get_user_info(current_user: dict = Depends(get_current_user_or_ak)):
             "email": user.email if user.email else "",
             "role": user.role,
             "is_active": user.is_active,
+            "permissions": current_user.get("permissions", []),
         })
     except HTTPException as e:
         raise e
@@ -44,22 +45,14 @@ async def get_user_info(current_user: dict = Depends(get_current_user_or_ak)):
 
 @router.get("/list", summary="获取用户列表")
 async def get_user_list(
-    current_user: dict = Depends(get_current_user_or_ak),
+    current_user: dict = Depends(require_permissions("admin")),
     page: int = 1,
     page_size: int = 10
 ):
     """获取所有用户列表（仅管理员可用）"""
     session = DB.get_session()
     try:
-        # 验证当前用户是否为管理员
-        if current_user["role"] != "admin":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=error_response(
-                    code=40301,
-                    message="无权限执行此操作"
-                )
-            )
+
 
         # 查询用户总数
         total = session.query(DBUser).count()
@@ -112,20 +105,12 @@ async def get_user_list(
 @router.post("", summary="添加用户")
 async def add_user(
     user_data: dict,
-    current_user: dict = Depends(get_current_user_or_ak)
+    current_user: dict = Depends(require_permissions("admin"))
 ):
     """添加新用户"""
     session = DB.get_session()
     try:
-        # 验证当前用户是否为管理员
-        if current_user["role"] != "admin":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=error_response(
-                    code=40301,
-                    message="无权限执行此操作"
-                )
-            )
+
 
         # 验证输入数据
         required_fields = ["username", "password"]
@@ -184,20 +169,12 @@ async def add_user(
 async def update_user_by_id(
     user_id: str,
     update_data: dict,
-    current_user: dict = Depends(get_current_user_or_ak)
+    current_user: dict = Depends(require_permissions("admin"))
 ):
     """管理员更新指定用户信息"""
     session = DB.get_session()
     try:
-        # 验证当前用户是否为管理员
-        if current_user["role"] != "admin":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=error_response(
-                    code=40301,
-                    message="无权限执行此操作"
-                )
-            )
+
 
         # 获取目标用户
         user = session.query(DBUser).filter(DBUser.id == user_id).first()
@@ -238,20 +215,12 @@ async def update_user_by_id(
 @router.delete("/{user_id}", summary="删除用户")
 async def delete_user_by_id(
     user_id: str,
-    current_user: dict = Depends(get_current_user_or_ak)
+    current_user: dict = Depends(require_permissions("admin"))
 ):
     """管理员删除指定用户"""
     session = DB.get_session()
     try:
-        # 验证当前用户是否为管理员
-        if current_user["role"] != "admin":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=error_response(
-                    code=40301,
-                    message="无权限执行此操作"
-                )
-            )
+
 
         # 获取目标用户
         user = session.query(DBUser).filter(DBUser.id == user_id).first()
@@ -291,20 +260,12 @@ async def delete_user_by_id(
 async def reset_user_password(
     user_id: str,
     password_data: dict,
-    current_user: dict = Depends(get_current_user_or_ak)
+    current_user: dict = Depends(require_permissions("admin"))
 ):
     """管理员重置指定用户密码"""
     session = DB.get_session()
     try:
-        # 验证当前用户是否为管理员
-        if current_user["role"] != "admin":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=error_response(
-                    code=40301,
-                    message="无权限执行此操作"
-                )
-            )
+
 
         # 获取目标用户
         user = session.query(DBUser).filter(DBUser.id == user_id).first()

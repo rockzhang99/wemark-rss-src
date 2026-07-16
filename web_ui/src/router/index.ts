@@ -1,5 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { isTokenExpired } from '@/utils/auth'
+import { Message } from '@arco-design/web-vue'
+import { useUserStore } from '@/store/user'
 import BasicLayout from '../components/Layout/BasicLayout.vue'
 import ExportRecords from '../views/ExportRecords.vue'
 import Login from '../views/Login.vue'
@@ -294,6 +296,27 @@ router.beforeEach(async (to, from, next) => {
         error: 'session_expired'
       }
     })
+  }
+
+  // 确保已加载当前用户权限（刷新页面后 store 为空时需先拉取）
+  const { state, load, hasPermission } = useUserStore()
+  if (!state.loaded) {
+    try {
+      await load()
+    } catch (e) {
+      // 加载失败不阻断导航，后端接口层会做最终鉴权
+      console.error('加载用户信息失败', e)
+    }
+  }
+
+  // 按路由所需权限校验（菜单隐藏只是体验层，此处为真正拦截）
+  const required = to.meta.permissions as string[] | string | undefined
+  if (required) {
+    const reqList = Array.isArray(required) ? required : [required]
+    if (!hasPermission(reqList)) {
+      Message.error('您没有权限访问该页面')
+      return next({ path: '/' })
+    }
   }
 
   next()

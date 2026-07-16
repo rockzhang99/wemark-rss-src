@@ -316,7 +316,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     return {
         "username": user.username,
         "role": user.role,
-        "permissions": user.permissions,
+        "permissions": get_effective_permissions(user),
         "original_user": user
     }
 
@@ -334,6 +334,61 @@ def requires_role(role: str):
             return await func(*args, **kwargs)
         return wrapper
     return decorator
+
+
+# ===== 角色 -> 默认权限映射（RBAC） =====
+# 统一权限词表与前端 web_ui/src/router/index.ts 的 meta.permissions 保持一致
+ROLE_PERMISSIONS = {
+    "admin": [
+        "subscription:view", "wechat:manage",
+        "tag:view", "tag:edit",
+        "message_task:view", "message_task:edit",
+        "config:view", "admin",
+    ],
+    "editor": [
+        "subscription:view", "wechat:manage",
+        "tag:view", "tag:edit",
+        "message_task:view", "message_task:edit",
+        "config:view",
+    ],
+    "user": [
+        "subscription:view", "wechat:manage",
+        "tag:view",
+        "message_task:view",
+        "config:view",
+    ],
+}
+
+
+def get_effective_permissions(user) -> list:
+    """计算用户的有效权限：
+    - 若用户显式设置了 permissions（非空列表）则以显式为准（覆盖角色默认）；
+    - 否则使用角色对应的默认权限集。
+    """
+    raw = getattr(user, "permissions", None)
+    try:
+        perms = json.loads(raw) if isinstance(raw, str) and raw.strip() else (raw if isinstance(raw, list) else [])
+    except Exception:
+        perms = []
+    if isinstance(perms, list) and perms:
+        return perms
+    return ROLE_PERMISSIONS.get(getattr(user, "role", "user"), ROLE_PERMISSIONS["user"])
+
+
+def require_permissions(*required: str):
+    """路由依赖：要求当前用户的有效权限包含 required 中至少一个，否则返回 403。"""
+    def dependency(current_user: dict = Depends(get_current_user_or_ak)):
+        user_perms = current_user.get("permissions") or []
+        if not any(p in user_perms for p in required):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=error_response(
+                    code=40301,
+                    message="无权限执行此操作"
+                )
+            )
+        return current_user
+    return dependency
 
 def create_ak(
     user_id: str,
@@ -478,7 +533,7 @@ def authenticate_ak(access_key: str, secret_key: str) -> Optional[dict]:
         "access_key_id": ak.id,
         "access_key_name": ak.name,
         "role": user.role,
-        "permissions": ak_permissions or user.permissions,  # 使用AK的权限或用户权限
+        "permissions": ak_permissions if ak_permissions else get_effective_permissions(user),  # 使用AK的权限或用户权限
         "original_user": user,
         "auth_type": "ak"  # 标记为 AK 认证
     }
@@ -539,7 +594,7 @@ async def get_current_user_or_ak(request: Request, token: str = Depends(oauth2_s
     return {
         "username": user.username,
         "role": user.role,
-        "permissions": user.permissions,
+        "permissions": get_effective_permissions(user),
         "original_user": user,
         "auth_type": "jwt"  # 标记为 JWT 认证
     }

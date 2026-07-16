@@ -1,6 +1,0 @@
-信息: 用提供的模式无法找到文件。
-信息: 用提供的模式无法找到文件。
-C:\Windows\System32\convert.exe
-Traceback (most recent call last):
-  File "<string>", line 1, in <module>
-ModuleNotFoundError: No module named 'potrace'

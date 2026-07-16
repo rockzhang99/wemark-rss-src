@@ -8,7 +8,7 @@
         @menu-item-click="handleMenuClick"
         class="navbar-menu"
       >
-        <a-menu-item v-for="item in menuItems" :key="item.key">
+        <a-menu-item v-for="item in visibleMenuItems" :key="item.key">
           <template #icon>
             <component :is="item.icon" />
           </template>
@@ -51,7 +51,7 @@
         @menu-item-click="handleDrawerClick"
         class="navbar-drawer-menu"
       >
-        <a-menu-item v-for="item in menuItems" :key="item.key">
+        <a-menu-item v-for="item in visibleMenuItems" :key="item.key">
           <template #icon>
             <component :is="item.icon" />
           </template>
@@ -63,8 +63,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watchEffect, onMounted, onBeforeUnmount } from 'vue'
+import { ref, watchEffect, onMounted, onBeforeUnmount, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useUserStore } from '@/store/user'
 import {
   IconHome,
   IconWechat,
@@ -93,20 +94,26 @@ const brandName = import.meta.env.VITE_APP_TITLE || 'WemarkRss'
 
 const menuItems = [
   { key: '/', label: '订阅管理', icon: IconHome },
-  { key: '/wechat-status', label: '授权管理', icon: IconWechat },
-  { key: '/export/records', label: '导出记录', icon: IconExport },
-  { key: '/tags', label: '标签管理', icon: IconTag },
-  { key: '/message-tasks', label: '消息任务', icon: IconNotification },
-  { key: '/filter-rules', label: '过滤规则', icon: IconFilter },
-  { key: '/task-queue', label: '任务队列', icon: IconList },
-  { key: '/cascade/feed-status', label: '公众号状态', icon: IconStorage },
-  { key: '/cascade', label: '级联管理', icon: IconShareExternal },
-  { key: '/access-keys', label: 'Access Key', icon: IconLock },
-  { key: '/users', label: '用户管理', icon: IconUser },
-  { key: '/env-exception', label: '异常统计', icon: IconExclamationCircle },
-  { key: '/configs', label: '配置信息', icon: IconSettings },
-  { key: '/sys-info', label: '系统信息', icon: IconInfoCircle }
+  { key: '/wechat-status', label: '授权管理', icon: IconWechat, permission: 'wechat:manage' },
+  { key: '/export/records', label: '导出记录', icon: IconExport, permission: 'config:view' },
+  { key: '/tags', label: '标签管理', icon: IconTag, permission: 'tag:view' },
+  { key: '/message-tasks', label: '消息任务', icon: IconNotification, permission: 'message_task:view' },
+  { key: '/filter-rules', label: '过滤规则', icon: IconFilter, permission: 'wechat:manage' },
+  { key: '/task-queue', label: '任务队列', icon: IconList, permission: 'admin' },
+  { key: '/cascade/feed-status', label: '公众号状态', icon: IconStorage, permission: 'admin' },
+  { key: '/cascade', label: '级联管理', icon: IconShareExternal, permission: 'admin' },
+  { key: '/access-keys', label: 'Access Key', icon: IconLock, permission: 'admin' },
+  { key: '/users', label: '用户管理', icon: IconUser, permission: 'admin' },
+  { key: '/env-exception', label: '异常统计', icon: IconExclamationCircle, permission: 'admin' },
+  { key: '/configs', label: '配置信息', icon: IconSettings, permission: 'config:view' },
+  { key: '/sys-info', label: '系统信息', icon: IconInfoCircle, permission: 'admin' }
 ]
+
+// 按当前用户权限过滤菜单（无 permission 的菜单对所有登录用户可见）
+const { hasPermission } = useUserStore()
+const visibleMenuItems = computed(() =>
+  menuItems.filter(item => !item.permission || hasPermission(item.permission))
+)
 
 watchEffect(() => {
   selectedKeys.value = [route.path]

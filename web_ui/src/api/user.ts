@@ -7,6 +7,7 @@ export interface UserInfo {
   avatar: string
   role: string
   is_active: boolean
+  permissions: string[]
   created_at: string
 }
 

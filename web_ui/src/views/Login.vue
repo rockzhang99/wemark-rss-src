@@ -85,6 +85,7 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { Message } from '@arco-design/web-vue'
 import { login } from '@/api/auth'
+import { useUserStore } from '@/store/user'
 
 const appTitle = computed(() => import.meta.env.VITE_APP_TITLE || '微信公众号订阅助手')
 const logo = '/static/logo.svg'
@@ -108,6 +109,13 @@ const handleSubmit = async () => {
       localStorage.setItem('token', res.access_token)
       localStorage.setItem('token_expire',
         Date.now() + (res.expires_in * 1000))
+
+      // 登录成功后拉取当前用户角色与权限，供菜单/路由鉴权使用
+      try {
+        await useUserStore().load()
+      } catch (e) {
+        console.error('加载用户信息失败', e)
+      }
 
       const redirect = router.currentRoute.value.query.redirect
       await router.push(redirect ? redirect.toString() : '/')

@@ -70,10 +70,14 @@ const roleOptions = [
 ]
 
 const permissionOptions = [
-  { label: '读', value: 'read' },
-  { label: '写', value: 'write' },
-  { label: '删除', value: 'delete' },
-  { label: '管理', value: 'admin' }
+  { label: '订阅查看', value: 'subscription:view' },
+  { label: '微信授权', value: 'wechat:manage' },
+  { label: '标签查看', value: 'tag:view' },
+  { label: '标签编辑', value: 'tag:edit' },
+  { label: '消息任务查看', value: 'message_task:view' },
+  { label: '消息任务编辑', value: 'message_task:edit' },
+  { label: '配置查看', value: 'config:view' },
+  { label: '系统管理', value: 'admin' }
 ]
 
 const fetchUsers = async () => {
