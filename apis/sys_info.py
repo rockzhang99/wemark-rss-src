@@ -101,7 +101,9 @@ async def get_system_info(
     """
     try:
       
-        from driver.token import get as get_val
+        from driver.token import get as get_val, get_active_wx_session
+        # 每用户各自授权：wx 状态按当前用户返回（回退全局）
+        _wx_session = get_active_wx_session(current_user.get("username"))
         # 获取系统信息
         system_info = {
             'os': {
@@ -122,10 +124,11 @@ async def get_system_info(
             'latest_version':LATEST_VERSION,
             'need_update':CORE_VERSION != LATEST_VERSION,
             "wx":{
-                'token':get_val('token',''),
-                'expiry_time':get_val('expiry.expiry_time','') if getStatus() else "",
-                "info":getLoginInfo(),
-                "login":getStatus(),
+                # 每用户各自授权：状态按当前用户返回（未授权则回退全局）
+                'token':_wx_session.get('token','') if _wx_session else '',
+                'expiry_time':(_wx_session.get('expiry') or {}).get('expiry_time','') if _wx_session else '',
+                "info":_wx_session.get('ext_data') if _wx_session else None,
+                "login":bool(_wx_session and _wx_session.get('token')),
             },
             "article":get_article_info(),
             'queue':TaskQueue.get_queue_info(),

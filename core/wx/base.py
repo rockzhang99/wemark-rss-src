@@ -58,30 +58,32 @@ class WxGather:
         print(f"采集模式:{type}")
         if type=="app":
             from core.wx.model.app import MpsAppMsg
-            wx=MpsAppMsg()
+            wx=MpsAppMsg(user_id=self.user_id)
         elif type=="web":
             from core.wx.model.web import MpsWeb
-            wx=MpsWeb()
+            wx=MpsWeb(user_id=self.user_id)
         else:
             from core.wx.model.api import MpsApi
-            wx=MpsApi()
+            wx=MpsApi(user_id=self.user_id)
         return wx
-    def __init__(self,is_add:bool=False):
+    def __init__(self,is_add:bool=False,user_id:str=None):
         self.articles=[]
         self.is_add=is_add
+        self.user_id=user_id
         self._cookies={}
         self.start_time = None  # 记录开始时间
         session=  requests.Session()
         timeout = (5, 10)  
         session.timeout = timeout # type: ignore
         self.session=session
-        self.get_token()
-    def get_token(self):
+        self.get_token(user_id)
+    def get_token(self, user_id=None):
         cfg.reload()
-        from driver.token import get as get_token_val
+        from driver.token import get_active_wx_session
+        token_data = get_active_wx_session(user_id)
         self.Gather_Content=cfg.get('gather.content',False)
-        self.cookies = get_token_val('cookie', '')
-        self.token=get_token_val('token','')
+        self.cookies = token_data.get('cookie', '') if token_data else ''
+        self.token=token_data.get('token','') if token_data else ''
         # 随机选择一个 User-Agent
         self.user_agent = cfg.get('user_agent', '')
         user_agent = random.choice(USER_AGENTS)

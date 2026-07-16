@@ -66,7 +66,7 @@ def do_job(mp=None,task:MessageTask=None,isTest=False):
                 count = 1
                 success = True
             else:
-                wx=WxGather().Model()
+                wx=WxGather(user_id=task.owner if task else None).Model()
                 try:
                     wx.get_Articles(mp.faker_id,CallBack=UpdateArticle,Mps_id=mp.id,Mps_title=mp.mp_name, MaxPage=1,Over_CallBack=Update_Over,interval=interval)
                     success = True

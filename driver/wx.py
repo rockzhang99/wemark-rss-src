@@ -570,8 +570,13 @@ class Wx:
             Store.save(cookies)
             # 保存新的 token 和 cookie
             if self.SESSION and self.SESSION.get("token"):
-                from driver.token import set_token
+                from driver.token import set_token, set_token_for_user
+                # 全局保留一份，作为未授权用户的回退
                 set_token(self.SESSION, self.ext_data)
+                # 按当前扫码用户保存（每用户各自授权）
+                auth_user = getattr(self, '_auth_user', None)
+                if auth_user:
+                    set_token_for_user(auth_user, self.SESSION, self.ext_data)
                 print_success(f"已更新Token: {self.SESSION.get('token')}")
             print_success("登录成功！")
         else:

@@ -29,6 +29,9 @@ async def get_tags(offset: int = 0, limit: int = 100, db: Session = Depends(get_
     - 包含标签列表和分页信息的成功响应
     """
     query = db.query(TagsModel)
+    # 多用户隔离：非管理员仅能看到自己创建的标签
+    if cur_user.get("role") != "admin":
+        query = query.filter(TagsModel.owner == cur_user["username"])
     total = query.count()
     tags = query.offset(offset).limit(limit).all()
     return success_response(data={
@@ -73,6 +76,7 @@ async def create_tag(tag: TagsCreate, db: Session = Depends(get_db),cur_user: di
             intro=tag.intro or '',
             mps_id =tag.mps_id,
             status=tag.status,
+            owner=cur_user["username"],
             created_at=datetime.now(),
             updated_at=datetime.now()
         )
@@ -111,6 +115,9 @@ async def get_tag(tag_id: str, db: Session = Depends(get_db),cur_user: dict = De
     tag = db.query(TagsModel).filter(TagsModel.id == tag_id).first()
     if not tag:
         return error_response(code=status.HTTP_201_CREATED, message="Tag not found")
+    # 多用户隔离：非管理员只能查看自己的标签
+    if cur_user.get("role") != "admin" and tag.owner != cur_user["username"]:
+        return error_response(code=status.HTTP_403_FORBIDDEN, message="无权限访问该标签")
     return success_response(data=tag)
 
 @router.put("/{tag_id}",
@@ -141,6 +148,9 @@ async def update_tag(tag_id: str, tag_data: TagsCreate, db: Session = Depends(ge
         tag = db.query(TagsModel).filter(TagsModel.id == tag_id).first()
         if not tag:
             return error_response(code=404, message="Tag not found")
+        # 多用户隔离：非管理员只能修改自己的标签
+        if cur_user.get("role") != "admin" and tag.owner != cur_user["username"]:
+            return error_response(code=403, message="无权限修改该标签")
         
         tag.name = tag_data.name
         tag.cover = tag_data.cover
@@ -179,6 +189,9 @@ async def delete_tag(tag_id: str, db: Session = Depends(get_db),cur_user: dict =
         tag = db.query(TagsModel).filter(TagsModel.id == tag_id).first()
         if not tag:
             return error_response(code=status.HTTP_201_CREATED, message="Tag not found")
+        # 多用户隔离：非管理员只能删除自己的标签
+        if cur_user.get("role") != "admin" and tag.owner != cur_user["username"]:
+            return error_response(code=403, message="无权限删除该标签")
         db.delete(tag)
         db.commit()
         

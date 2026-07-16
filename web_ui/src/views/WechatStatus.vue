@@ -117,7 +117,7 @@
 <script setup lang="ts">
 import { ref, onMounted, inject } from 'vue'
 import { Message } from '@arco-design/web-vue'
-import { getSysInfo } from '@/api/sysInfo'
+import http from '@/api/http'
 
 const haswxLogined = ref(false)
 const wxLoginInfo = ref<any>(null)
@@ -130,11 +130,16 @@ const showAuthQrcode = inject<() => void>('showAuthQrcode', () => {
 
 const fetchSysInfo = async () => {
   try {
-    const res = await getSysInfo()
-    haswxLogined.value = res?.wx?.login || false
-    wxLoginInfo.value = res?.wx?.info || null
+    const data = await http.get('/wx/auth/wx/status')
+    haswxLogined.value = data?.login || false
+    // 兼容原模板结构：info 作为 ext_data，token/expiry 单独挂出
+    wxLoginInfo.value = {
+      ext_data: data?.info || null,
+      token: data?.token || '',
+      expiry: { expiry_time: data?.expiry_time || '' }
+    }
   } catch (error) {
-    console.error('获取系统信息失败', error)
+    console.error('获取微信授权状态失败', error)
   }
 }
 
@@ -153,14 +158,7 @@ const copyToken = () => {
 const switchAccount = async () => {
   switching.value = true
   try {
-    // 调用切换账号 API
-    const response = await fetch('/api/v1/wx/auth/switch', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
-    })
-    const result = await response.json()
+    const result = await http.post('/wx/auth/switch')
     if (result.code === 0) {
       Message.success('账号切换成功')
       fetchSysInfo()
@@ -177,7 +175,6 @@ const switchAccount = async () => {
 const refreshToken = async () => {
   try {
     Message.info('正在刷新Token...')
-    // 这里可以调用刷新Token的逻辑
     await fetchSysInfo()
     Message.success('Token刷新成功')
   } catch (error) {
@@ -189,6 +186,7 @@ onMounted(() => {
   fetchSysInfo()
 })
 </script>
+
 
 <style scoped>
 .wechat-status-page {

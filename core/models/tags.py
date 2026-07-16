@@ -12,6 +12,8 @@ class Tags(Base):
     intro = Column(String(255))
     # 标签状态（如：0-禁用，1-启用）
     status = Column(Integer)
+    # 归属用户（多用户隔离），存量数据回填为 admin
+    owner = Column(String(255), nullable=True, index=True)
     # 定义需要通知的微信公众号ID集合（JSON格式字符串）
     mps_id = Column(Text, nullable=False)
     # 最后一次同步时间（时间戳）

@@ -76,6 +76,8 @@ class Db:
             
             self.session_factory=self.get_session_factory()
             self.ensure_article_columns()
+            self.ensure_isolation_columns()
+            self.ensure_subscription_table()
         except Exception as e:
             print(f"Error creating database connection: {e}")
             raise
@@ -104,6 +106,60 @@ class Db:
             print_info(f"[{self.tag}] 文章表结构已自动更新: {', '.join(alter_statements)}")
         except Exception as e:
             print_warning(f"[{self.tag}] 检查/更新 articles 表结构失败: {e}")
+
+    def ensure_isolation_columns(self):
+        """多用户隔离：为存量表补充 owner 列，并将历史数据归属回填为 admin。
+
+        - tags / message_tasks 增加 owner 列（新装实例由 create_all 建表时自带，
+          此处仅处理已存在的旧表，因为 create_all 不会给旧表加列）。
+        - subscriptions 为新表，由 Base.metadata.create_all 在建库时自动创建，无需此处处理。
+        """
+        try:
+            inspector = inspect(self.engine)
+            tables = set(inspector.get_table_names())
+
+            for tbl in ("tags", "message_tasks"):
+                if tbl not in tables:
+                    continue
+                columns = {column["name"] for column in inspector.get_columns(tbl)}
+                if "owner" not in columns:
+                    with self.engine.begin() as conn:
+                        conn.execute(text(f"ALTER TABLE {tbl} ADD COLUMN owner VARCHAR(255)"))
+                    print_info(f"[{self.tag}] {tbl} 已添加 owner 列（多用户隔离）")
+
+            # 历史数据归属回填：未设置 owner 的行统一归 admin（初始管理员）
+            with self.engine.begin() as conn:
+                conn.execute(text("UPDATE tags SET owner='admin' WHERE owner IS NULL"))
+                conn.execute(text("UPDATE message_tasks SET owner='admin' WHERE owner IS NULL"))
+        except Exception as e:
+            print_warning(f"[{self.tag}] 检查/更新隔离列(owner)失败: {e}")
+    def ensure_subscription_table(self):
+        """多用户隔离：确保用户订阅关系表 subscriptions 存在。
+
+        - 该表为新增模型(core/models/subscription.py)，仅在 init_sys 跑 create_all 时创建；
+          但正常 `python main.py` 启动不会执行 init_sys，导致该表缺失、删除订阅时
+          报 no such table: subscriptions。此处用 CREATE TABLE IF NOT EXISTS 兜底，
+          保证无论是否执行 init 都能自动建表。
+        """
+        try:
+            inspector = inspect(self.engine)
+            if "subscriptions" in inspector.get_table_names():
+                return
+            with self.engine.begin() as conn:
+                conn.execute(text(
+                    "CREATE TABLE subscriptions ("
+                    "id VARCHAR(255) NOT NULL PRIMARY KEY, "
+                    "user_id VARCHAR(255) NOT NULL, "
+                    "feed_id VARCHAR(255) NOT NULL, "
+                    "status INTEGER, "
+                    "created_at DATETIME, "
+                    "updated_at DATETIME)"
+                ))
+                conn.execute(text("CREATE INDEX ix_subscriptions_user_id ON subscriptions (user_id)"))
+                conn.execute(text("CREATE INDEX ix_subscriptions_feed_id ON subscriptions (feed_id)"))
+            print_info(f"[{self.tag}] 已创建 subscriptions 表（多用户订阅隔离）")
+        except Exception as e:
+            print_warning(f"[{self.tag}] 检查/创建 subscriptions 表失败: {e}")
     def create_tables(self):
         """Create all tables defined in models"""
         from core.models.base import Base as B # 导入所有模型

@@ -641,12 +641,15 @@ def list_user_aks(user_id: str) -> list:
             session.close()
 
 
-def deactivate_ak(ak_id: str) -> bool:
-    """停用 Access Key"""
+def deactivate_ak(ak_id: str, user_id: str = None) -> bool:
+    """停用 Access Key（仅限本人，管理员也只能管理自己的 AK）"""
     session = None
     try:
         session = DB.get_session()
-        ak = session.query(AccessKey).filter(AccessKey.id == ak_id).first()
+        query = session.query(AccessKey).filter(AccessKey.id == ak_id)
+        if user_id is not None:
+            query = query.filter(AccessKey.user_id == user_id)
+        ak = query.first()
         if ak:
             ak.is_active = False
             session.commit()
@@ -663,12 +666,15 @@ def deactivate_ak(ak_id: str) -> bool:
             session.close()
 
 
-def delete_ak(ak_id: str) -> bool:
-    """删除 Access Key"""
+def delete_ak(ak_id: str, user_id: str = None) -> bool:
+    """删除 Access Key（仅限本人，管理员也只能管理自己的 AK）"""
     session = None
     try:
         session = DB.get_session()
-        ak = session.query(AccessKey).filter(AccessKey.id == ak_id).first()
+        query = session.query(AccessKey).filter(AccessKey.id == ak_id)
+        if user_id is not None:
+            query = query.filter(AccessKey.user_id == user_id)
+        ak = query.first()
         if ak:
             session.delete(ak)
             session.commit()
@@ -685,12 +691,15 @@ def delete_ak(ak_id: str) -> bool:
             session.close()
 
 
-def update_ak(ak_id: str, **kwargs) -> bool:
-    """更新 Access Key 信息"""
+def update_ak(ak_id: str, user_id: str = None, **kwargs) -> bool:
+    """更新 Access Key 信息（仅限本人，管理员也只能管理自己的 AK）"""
     session = None
     try:
         session = DB.get_session()
-        ak = session.query(AccessKey).filter(AccessKey.id == ak_id).first()
+        query = session.query(AccessKey).filter(AccessKey.id == ak_id)
+        if user_id is not None:
+            query = query.filter(AccessKey.user_id == user_id)
+        ak = query.first()
         if not ak:
             return False
         

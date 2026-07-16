@@ -11,6 +11,7 @@ from datetime import datetime
 from core.config import cfg
 from core.res import save_avatar_locally
 from core.models.feed import FEATURED_MP_ID, FEATURED_MP_NAME, FEATURED_MP_INTRO
+from core.models.subscription import Subscription
 from core.models.base import DATA_STATUS
 from core.cache import clear_cache_pattern
 import io
@@ -233,6 +234,11 @@ async def get_mps(
     try:
         from core.models.feed import Feed
         query = session.query(Feed).filter(Feed.id != FEATURED_MP_ID)
+        # 多用户隔离：非管理员仅能看到自己订阅的公众号
+        if current_user.get("role") != "admin":
+            query = query.join(Subscription, Subscription.feed_id == Feed.id).filter(
+                Subscription.user_id == current_user["username"]
+            )
         if kw:
             query = query.filter(Feed.mp_name.ilike(f"%{kw}%"))
         if status is not None:
@@ -355,6 +361,17 @@ async def update_mps(
                     code=40401,
                     message="请选择一个公众号"
                 )
+        # 多用户隔离：非管理员只能同步自己订阅的公众号
+        if current_user.get("role") != "admin":
+            sub = session.query(Subscription).filter(
+                Subscription.user_id == current_user["username"],
+                Subscription.feed_id == mp_id
+            ).first()
+            if not sub:
+                return error_response(
+                    code=40301,
+                    message="您没有权限同步该公众号"
+                )
         import time
         sync_interval=cfg.get("sync_interval",60)
         if mp.update_time is None:
@@ -369,7 +386,7 @@ async def update_mps(
         result=[]    
         def UpArt(mp):
             from core.wx import WxGather
-            wx=WxGather().Model()
+            wx=WxGather(user_id=current_user.get("username")).Model()
             wx.get_Articles(mp.faker_id,Mps_id=mp.id,Mps_title=mp.mp_name,CallBack=UpdateArticle,start_page=start_page,MaxPage=end_page)
             result=wx.articles
         import threading
@@ -393,7 +410,7 @@ async def update_mps(
 @router.get("/{mp_id}", summary="获取公众号详情")
 async def get_mp(
     mp_id: str,
-    # current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user_or_ak)
 ):
     session = DB.get_session()
     try:
@@ -407,6 +424,20 @@ async def get_mp(
                     message="公众号不存在"
                 )
             )
+        # 多用户隔离：非管理员只能查看自己订阅的公众号
+        if current_user.get("role") != "admin":
+            sub = session.query(Subscription).filter(
+                Subscription.user_id == current_user["username"],
+                Subscription.feed_id == mp_id
+            ).first()
+            if not sub:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=error_response(
+                        code=40301,
+                        message="您没有权限查看该公众号"
+                    )
+                )
         return success_response(mp)
     except Exception as e:
         print(f"获取公众号详情错误: {str(e)}")
@@ -467,14 +498,16 @@ async def add_mp(
         existing_feed = session.query(Feed).filter(Feed.faker_id == mp_id).first()
         
         if existing_feed:
-            # 更新现有记录
-            existing_feed.mp_name = mp_name
-            existing_feed.mp_cover = local_avatar_path
-            existing_feed.mp_intro = mp_intro
-            existing_feed.updated_at = now
+            feed = existing_feed
+            # 仅管理员可覆盖全局公众号的展示信息，普通用户仅建立自己的订阅关系
+            if current_user.get("role") == "admin":
+                existing_feed.mp_name = mp_name
+                existing_feed.mp_cover = local_avatar_path
+                existing_feed.mp_intro = mp_intro
+                existing_feed.updated_at = now
         else:
-            # 创建新的Feed记录
-            new_feed = Feed(
+            # 创建新的Feed记录（作为全局目录，多个用户可各自订阅）
+            feed = Feed(
                 id=f"MP_WXS_{mpx_id}",
                 mp_name=mp_name,
                 mp_cover= local_avatar_path,
@@ -486,11 +519,25 @@ async def add_mp(
                 update_time=0,
                 sync_time=0,
             )
-            session.add(new_feed)
-           
+            session.add(feed)
+            session.flush()
+        
+        # 多用户隔离：为当前用户建立订阅关系（同一公众号可被多人订阅）
+        sub = session.query(Subscription).filter(
+            Subscription.user_id == current_user["username"],
+            Subscription.feed_id == feed.id
+        ).first()
+        if not sub:
+            session.add(Subscription(
+                user_id=current_user["username"],
+                feed_id=feed.id,
+                status=1,
+                created_at=now,
+                updated_at=now
+            ))
+        
         session.commit()
         
-        feed = existing_feed if existing_feed else new_feed
          #在这里实现第一次添加获取公众号文章
         if not existing_feed:
             from core.queue import TaskQueue
@@ -519,7 +566,7 @@ async def add_mp(
         )
 
 
-@router.delete("/{mp_id}", summary="删除订阅号")
+@router.delete("/{mp_id}", summary="取消订阅/删除订阅号")
 async def delete_mp(
     mp_id: str,
     current_user: dict = Depends(get_current_user_or_ak)
@@ -537,10 +584,28 @@ async def delete_mp(
                 )
             )
         
-        session.delete(mp)
+        if current_user.get("role") == "admin":
+            # 管理员：全局删除公众号及其全部订阅关系
+            session.query(Subscription).filter(Subscription.feed_id == mp_id).delete()
+            session.delete(mp)
+            message = "订阅号已全局删除"
+        else:
+            # 普通用户：仅取消自己的订阅（不影响其他用户）
+            sub = session.query(Subscription).filter(
+                Subscription.user_id == current_user["username"],
+                Subscription.feed_id == mp_id
+            ).first()
+            if sub:
+                session.delete(sub)
+            # 若已无任何订阅者，清理孤立的全局公众号记录
+            remaining = session.query(Subscription).filter(Subscription.feed_id == mp_id).count()
+            if remaining == 0 and mp.id != FEATURED_MP_ID:
+                session.delete(mp)
+            message = "已取消订阅"
+        
         session.commit()
         return success_response({
-            "message": "订阅号删除成功",
+            "message": message,
             "id": mp_id
         })
     except Exception as e:
@@ -576,22 +641,46 @@ async def update_mp_status(
                 )
             )
         
-        if mp_name is not None:
-            mp.mp_name = mp_name
-        if mp_cover is not None:
-            mp.mp_cover = mp_cover
-        if mp_intro is not None:
-            mp.mp_intro = mp_intro
-        if status is not None:
-            mp.status = status
+        if current_user.get("role") != "admin":
+            # 普通用户：仅维护自己订阅维度的启用/停用状态
+            sub = session.query(Subscription).filter(
+                Subscription.user_id == current_user["username"],
+                Subscription.feed_id == mp_id
+            ).first()
+            if not sub:
+                sub = Subscription(
+                    user_id=current_user["username"],
+                    feed_id=mp_id,
+                    status=status if status is not None else 1,
+                    created_at=datetime.now(),
+                    updated_at=datetime.now()
+                )
+                session.add(sub)
+            else:
+                if status is not None:
+                    sub.status = status
+                sub.updated_at = datetime.now()
+        else:
+            if mp_name is not None:
+                mp.mp_name = mp_name
+            if mp_cover is not None:
+                mp.mp_cover = mp_cover
+            if mp_intro is not None:
+                mp.mp_intro = mp_intro
+            if status is not None:
+                mp.status = status
+            mp.updated_at = datetime.now()
         
-        mp.updated_at = datetime.now()
         session.commit()
+        
+        result_status = mp.status
+        if current_user.get("role") != "admin":
+            result_status = sub.status if sub else (status if status is not None else 1)
         
         return success_response({
             "message": "更新成功",
             "id": mp_id,
-            "status": mp.status
+            "status": result_status
         })
     except Exception as e:
         session.rollback()

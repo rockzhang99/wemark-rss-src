@@ -38,7 +38,8 @@ def ApiSuccess(data):
             print("\n登录失败，请检查上述错误信息")
 @router.get("/qr/code", summary="获取登录二维码")
 async def get_qrcode(current_user=Depends(get_current_user)):
-
+    # 绑定当前用户，扫码成功后授权归属该用户（每用户各自授权）
+    WX_API._auth_user = current_user.get("username")
     code_url=WX_API.GetCode(Success)
     return success_response(code_url)
 @router.get("/qr/image", summary="获取登录二维码图片")
@@ -51,7 +52,23 @@ async def qr_status(current_user=Depends(get_current_user)):
      return success_response(WX_API.QrStatus())    
 @router.get("/qr/over",summary="扫码完成")
 async def qr_success(current_user=Depends(get_current_user)):
-     return success_response(await WX_API.Close())    
+     result = success_response(await WX_API.Close())
+     # 清除授权用户上下文，避免影响后续扫码
+     WX_API._auth_user = None
+     return result
+
+
+@router.get("/wx/status", summary="获取当前用户微信授权状态")
+async def get_wx_status(current_user: dict = Depends(get_current_user)):
+    """返回当前登录用户自己的微信授权状态（每用户各自授权，互不可见）"""
+    from driver.token import get_active_wx_session
+    session = get_active_wx_session(current_user.get("username"))
+    return success_response({
+        "login": bool(session and session.get("token")),
+        "token": session.get("token", "") if session else "",
+        "expiry_time": (session.get("expiry") or {}).get("expiry_time", "") if session else "",
+        "info": session.get("ext_data") if session else None,
+    })
 @router.post("/login", summary="用户登录")
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     user = authenticate_user(form_data.username, form_data.password)
@@ -225,6 +242,7 @@ async def update_access_key(
     ```
     """
     try:
+        user_id = current_user.get("original_user").id if hasattr(current_user.get("original_user"), "id") else current_user.get("user_id")
         update_data = {}
         if req.name is not None:
             update_data['name'] = req.name
@@ -238,7 +256,8 @@ async def update_access_key(
         if not update_data:
             return success_response(None, "没有更新内容")
         
-        success = update_ak(ak_id, **update_data)
+        # 归属校验：仅本人可更新自己的 AK（堵住 IDOR 越权漏洞）
+        success = update_ak(ak_id, user_id, **update_data)
         if success:
             return success_response(None, "更新成功")
         else:
@@ -268,7 +287,9 @@ async def deactivate_access_key(
     ```
     """
     try:
-        success = deactivate_ak(ak_id)
+        user_id = current_user.get("original_user").id if hasattr(current_user.get("original_user"), "id") else current_user.get("user_id")
+        # 归属校验：仅本人可停用自己的 AK（堵住 IDOR 越权漏洞）
+        success = deactivate_ak(ak_id, user_id)
         if success:
             return success_response(None, "Access Key 已停用")
         else:
@@ -298,7 +319,9 @@ async def delete_access_key(
     ```
     """
     try:
-        success = delete_ak(ak_id)
+        user_id = current_user.get("original_user").id if hasattr(current_user.get("original_user"), "id") else current_user.get("user_id")
+        # 归属校验：仅本人可删除自己的 AK（堵住 IDOR 越权漏洞）
+        success = delete_ak(ak_id, user_id)
         if success:
             return success_response(None, "Access Key 已删除")
         else:
@@ -438,6 +461,8 @@ async def switch_wechat_account(current_user: dict = Depends(get_current_user)):
     import asyncio
 
     try:
+        # 绑定当前用户，切换后授权归属该用户（每用户各自授权）
+        WX_API._auth_user = current_user.get("username")
         # 调用切换账号方法（异步）
         result = await WX_API.switch_account()
         return success_response(result, "切换账号成功" if result else "切换账号失败")

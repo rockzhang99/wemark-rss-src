@@ -46,6 +46,9 @@ async def list_message_tasks(
     try:
         db.expire_all()
         query = db.query(MessageTask)
+        # 多用户隔离：非管理员仅能看到自己创建的消息任务
+        if current_user.get("role") != "admin":
+            query = query.filter(MessageTask.owner == current_user["username"])
         if status is not None:
             query = query.filter(MessageTask.status == status)
         
@@ -88,6 +91,9 @@ async def get_message_task(
         message_task = db.query(MessageTask).filter(MessageTask.id == task_id).first()
         if not message_task:
             raise HTTPException(status_code=404, detail="Message task not found")
+        # 多用户隔离：非管理员只能查看自己的任务
+        if current_user.get("role") != "admin" and message_task.owner != current_user["username"]:
+            raise HTTPException(status_code=403, detail="无权限访问该消息任务")
         return success_response(data=message_task)
     except Exception as e:
         return error_response(code=500, message=str(e))
@@ -114,6 +120,9 @@ async def test_message_task(
         message_task = db.query(MessageTask).filter(MessageTask.id == task_id).first()
         if not message_task:
             raise HTTPException(status_code=404, detail="Message task not found")
+        # 多用户隔离：非管理员只能测试自己的任务
+        if current_user.get("role") != "admin" and message_task.owner != current_user["username"]:
+            raise HTTPException(status_code=403, detail="无权限测试该消息任务")
         
         # 获取第一个订阅号进行测试
         from jobs.mps import get_feeds
@@ -187,6 +196,15 @@ async def run_message_task(
         500: 数据库查询异常
     """
     try:
+        # 多用户隔离：非管理员只能执行自己的任务
+        if current_user.get("role") != "admin":
+            db = DB.get_session()
+            try:
+                task = db.query(MessageTask).filter(MessageTask.id == task_id).first()
+                if not task or task.owner != current_user["username"]:
+                    raise HTTPException(status_code=403, detail="无权限执行该消息任务")
+            finally:
+                db.close()
         from jobs.mps import run
         mps={
             "count":0,
@@ -262,7 +280,8 @@ async def create_message_task(
             name=task_data.name,
             status=task_data.status if task_data.status is not None else 0,
             headers=task_data.headers if task_data.headers is not None else "",
-            cookies=task_data.cookies if task_data.cookies is not None else ""
+            cookies=task_data.cookies if task_data.cookies is not None else "",
+            owner=current_user["username"]
         )
         db.add(db_task)
         db.commit()
@@ -299,6 +318,9 @@ async def update_message_task(
         db_task = db.query(MessageTask).filter(MessageTask.id == task_id).first()
         if not db_task:
             raise HTTPException(status_code=404, detail="Message task not found")
+        # 多用户隔离：非管理员只能修改自己的任务
+        if current_user.get("role") != "admin" and db_task.owner != current_user["username"]:
+            raise HTTPException(status_code=403, detail="无权限修改该消息任务")
         
         if task_data.message_template is not None:
             db_task.message_template = task_data.message_template
@@ -359,6 +381,9 @@ async def delete_message_task(
         db_task = db.query(MessageTask).filter(MessageTask.id == task_id).first()
         if not db_task:
             raise HTTPException(status_code=404, detail="Message task not found")
+        # 多用户隔离：非管理员只能删除自己的任务
+        if current_user.get("role") != "admin" and db_task.owner != current_user["username"]:
+            raise HTTPException(status_code=403, detail="无权限删除该消息任务")
         
         db.delete(db_task)
         db.commit()

@@ -16,7 +16,39 @@ from core.cache import clear_cache_pattern
 from tools.fix import fix_article
 from core.article_content import sync_article_content
 from driver.wxarticle import WXArticleFetcher
+from core.models.subscription import Subscription
 router = APIRouter(prefix=f"/articles", tags=["文章管理"])
+
+
+def _get_allowed_feed_ids(session, current_user: dict):
+    """多用户隔离：返回当前用户可见的 feed_id 列表；管理员返回 None 表示全部可见。"""
+    if current_user.get("role") == "admin":
+        return None
+    subs = session.query(Subscription.feed_id).filter(
+        Subscription.user_id == current_user["username"]
+    ).all()
+    return [s[0] for s in subs] if subs else []
+
+
+def _assert_feed_accessible(session, mp_id: str, current_user: dict):
+    """多用户隔离：非管理员只能访问自己订阅的公众号；若不可访问抛出 403。"""
+    if current_user.get("role") == "admin":
+        return
+    if not mp_id:
+        raise HTTPException(
+            status_code=fast_status.HTTP_403_FORBIDDEN,
+            detail=error_response(code=40301, message="您没有权限访问该文章")
+        )
+    sub = session.query(Subscription).filter(
+        Subscription.user_id == current_user["username"],
+        Subscription.feed_id == mp_id
+    ).first()
+    if not sub:
+        raise HTTPException(
+            status_code=fast_status.HTTP_403_FORBIDDEN,
+            detail=error_response(code=40301, message="您没有权限访问该文章")
+        )
+
 
 _refresh_tasks = {}
 _refresh_tasks_lock = threading.Lock()
@@ -142,9 +174,20 @@ async def clean_orphan_articles(
         
         # 找出Articles表中mp_id不在Feeds表中的记录
         subquery = session.query(Feed.id).subquery()
-        deleted_count = session.query(Article)\
-            .filter(~Article.mp_id.in_(subquery))\
-            .delete(synchronize_session=False)
+        query = session.query(Article)\
+            .filter(~Article.mp_id.in_(subquery))
+        
+        # 多用户隔离：非管理员只能清理自己订阅的公众号里的孤立文章
+        allowed_feed_ids = _get_allowed_feed_ids(session, current_user)
+        if allowed_feed_ids is not None:
+            if not allowed_feed_ids:
+                return success_response({
+                    "message": "清理无效文章成功",
+                    "deleted_count": 0
+                })
+            query = query.filter(Article.mp_id.in_(allowed_feed_ids))
+        
+        deleted_count = query.delete(synchronize_session=False)
         
         session.commit()
         
@@ -169,6 +212,7 @@ async def clean_orphan_articles(
         )
     finally:
         session.close()
+
 
 
 @router.delete("/clean-old", summary="清理指定天数前的旧文章")
@@ -206,9 +250,15 @@ async def clean_old_articles(
             Article.status != DATA_STATUS.DELETED  # 排除已删除的文章
         )
         
+        # 多用户隔离：非管理员只能清理自己订阅的公众号的文章
+        allowed_feed_ids = _get_allowed_feed_ids(session, current_user)
+        if allowed_feed_ids is not None:
+            query = query.filter(Article.mp_id.in_(allowed_feed_ids))
+        
         # 如果指定了公众号ID，只删除该公众号的文章
         if mp_id:
             query = query.filter(Article.mp_id == mp_id)
+
         
         # 先获取总数
         total_count = query.count()
@@ -339,7 +389,11 @@ async def toggle_article_read_status(
                 )
             )
         
+        # 多用户隔离：只能阅读自己订阅的公众号的文章
+        _assert_feed_accessible(session, article.mp_id, current_user)
+        
         # 更新阅读状态
+
         article.is_read = 1 if is_read else 0
         session.commit()
         
@@ -383,7 +437,11 @@ async def toggle_article_favorite_status(
                 )
             )
 
+        # 多用户隔离：只能收藏自己订阅的公众号的文章
+        _assert_feed_accessible(session, article.mp_id, current_user)
+
         article.is_favorite = 1 if is_favorite else 0
+
         session.commit()
 
         clear_cache_pattern("articles_list")
@@ -410,9 +468,11 @@ async def toggle_article_favorite_status(
 async def clean_duplicate(
     current_user: dict = Depends(get_current_user_or_ak)
 ):
+    session = DB.get_session()
     try:
         from tools.clean import clean_duplicate_articles
-        (msg, deleted_count) =clean_duplicate_articles()
+        allowed_feed_ids = _get_allowed_feed_ids(session, current_user)
+        (msg, deleted_count) = clean_duplicate_articles(allowed_feed_ids)
         return success_response({
             "message": msg,
             "deleted_count": deleted_count
@@ -426,6 +486,9 @@ async def clean_duplicate(
                 message="清理重复文章"
             )
         )
+    finally:
+        session.close()
+
 
 
 @router.api_route("", summary="获取文章列表",methods= ["GET", "POST"], operation_id="get_articles_list")
@@ -455,6 +518,13 @@ async def get_articles(
 
         # 构建查询条件 - 使用 ArticleBase 模型（不包含 content 字段，加速查询）
         query = session.query(ArticleBase)
+
+        # 多用户隔离：非管理员只能查看自己订阅的公众号的文章
+        allowed_feed_ids = _get_allowed_feed_ids(session, current_user)
+        if allowed_feed_ids is not None:
+            if not allowed_feed_ids:
+                return success_response({"list": [], "total": 0})
+            query = query.filter(Article.mp_id.in_(allowed_feed_ids))
 
         # 支持多个状态值（逗号分隔），将字符串映射为状态码
         if status:
@@ -529,8 +599,8 @@ async def refresh_article(
 ):
     session = DB.get_session()
     try:
-        article_exists = session.query(Article.id).filter(Article.id == article_id).first()
-        if not article_exists:
+        article = session.query(Article.id, Article.mp_id).filter(Article.id == article_id).first()
+        if not article:
             raise HTTPException(
                 status_code=fast_status.HTTP_404_NOT_FOUND,
                 detail=error_response(
@@ -538,6 +608,10 @@ async def refresh_article(
                     message="文章不存在"
                 )
             )
+
+        # 多用户隔离：只能刷新自己订阅的公众号的文章
+        _assert_feed_accessible(session, article.mp_id, current_user)
+
 
         active_task = _get_active_refresh_task(article_id)
         if active_task:
@@ -595,7 +669,7 @@ async def get_refresh_task_status(
 def get_article_detail(
     article_id: str,
     content: bool = Query(False),
-    # current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user_or_ak)
 ):
     session = DB.get_session()
     try:
@@ -608,6 +682,8 @@ def get_article_detail(
                     message="文章不存在"
                 )
             )
+        # 多用户隔离：只能查看自己订阅的公众号的文章
+        _assert_feed_accessible(session, article.mp_id, current_user)
         return success_response(article)
     except HTTPException as e:
         raise e
@@ -619,6 +695,7 @@ def get_article_detail(
                 message=f"获取文章详情失败: {str(e)}"
             )
         )   
+
 
 @router.delete("/{article_id}", summary="删除文章")
 async def delete_article(
@@ -639,8 +716,13 @@ async def delete_article(
                     message="文章不存在"
                 )
             )
+
+        # 多用户隔离：只能删除自己订阅的公众号的文章
+        _assert_feed_accessible(session, article.mp_id, current_user)
+
         # 逻辑删除文章（更新状态为deleted）
         article.status = DATA_STATUS.DELETED
+
         if cfg.get("article.true_delete", False):
             session.delete(article)
         session.commit()
@@ -681,7 +763,11 @@ def get_next_article(
                 )
             )
         
+        # 多用户隔离：只能查看自己订阅的公众号的文章
+        _assert_feed_accessible(session, current_article.mp_id, current_user)
+        
         # 查询发布时间更晚的第一篇文章
+
         next_article = session.query(Article)\
             .filter(Article.publish_time > current_article.publish_time)\
             .filter(Article.status != DATA_STATUS.DELETED)\
@@ -739,7 +825,11 @@ def get_prev_article(
                 )
             )
         
+        # 多用户隔离：只能查看自己订阅的公众号的文章
+        _assert_feed_accessible(session, current_article.mp_id, current_user)
+        
         # 查询发布时间更早的第一篇文章
+
         prev_article = session.query(Article)\
             .filter(Article.publish_time < current_article.publish_time)\
             .filter(Article.status != DATA_STATUS.DELETED)\
