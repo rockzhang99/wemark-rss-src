@@ -7,7 +7,7 @@ import {
   deleteConfig 
 } from '@/api/configManagement'
 import type { ConfigManagement, ConfigManagementUpdate } from '@/types/configManagement'
-import { Modal } from '@arco-design/web-vue'
+import { Message, Modal } from '@arco-design/web-vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -43,6 +43,7 @@ const handleUpdate = async () => {
       await updateConfig(config.value.config_key, form)
       await fetchConfig(route.params.key as string)
       isEditing.value = false
+      Message.success('保存成功，重启服务后生效')
     }
   } catch (err) {
     error.value = err instanceof Error ? err.message : '更新配置失败'

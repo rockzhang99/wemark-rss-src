@@ -42,6 +42,8 @@ const error = ref('')
 const visible = ref(false)
 const modalTitle = ref('添加用户')
 const selectedUser = ref<UserListResponse | null>(null)
+// 当前编辑的用户是否为超级管理员（超级管理员角色不可在编辑界面修改，避免误降级）
+const selectedUserIsSuperAdmin = ref(false)
 const pagination = reactive({
   current: 1,
   pageSize: 10,
@@ -59,14 +61,12 @@ const form = reactive<AddUserParams>({
   password: '',
   nickname: '',
   email: '',
-  role: 'user',
+  role: 'editor',
   permissions: []
 })
 
 const roleOptions = [
-  { label: '管理员', value: 'admin' },
-  { label: '编辑', value: 'editor' },
-  { label: '普通用户', value: 'user' }
+  { label: '普通管理员', value: 'editor' }
 ]
 
 const permissionOptions = [
@@ -76,8 +76,7 @@ const permissionOptions = [
   { label: '标签编辑', value: 'tag:edit' },
   { label: '消息任务查看', value: 'message_task:view' },
   { label: '消息任务编辑', value: 'message_task:edit' },
-  { label: '配置查看', value: 'config:view' },
-  { label: '系统管理', value: 'admin' }
+  { label: '配置查看', value: 'config:view' }
 ]
 
 const fetchUsers = async () => {
@@ -110,12 +109,13 @@ const fetchUsers = async () => {
 const showAddModal = () => {
   modalTitle.value = '添加用户'
   selectedUser.value = null
+  selectedUserIsSuperAdmin.value = false
   Object.assign(form, {
     username: '',
     password: '',
     nickname: '',
     email: '',
-    role: 'user',
+    role: 'editor',
     permissions: []
   })
   visible.value = true
@@ -124,6 +124,7 @@ const showAddModal = () => {
 const editUser = (record: UserListResponse) => {
   modalTitle.value = '编辑用户'
   selectedUser.value = record
+  selectedUserIsSuperAdmin.value = record.role === 'admin'
   Object.assign(form, {
     username: record.username,
     password: '',
@@ -150,12 +151,16 @@ const handleSubmit = async () => {
       await addUser(form)
       Message.success('添加成功')
     } else if (selectedUser.value) {
-      await updateUserById(selectedUser.value.id, {
+      const payload: Record<string, unknown> = {
         nickname: form.nickname,
         email: form.email,
-        role: form.role,
         permissions: form.permissions
-      })
+      }
+      // 超级管理员角色不可在编辑界面修改，避免误降级
+      if (!selectedUserIsSuperAdmin.value) {
+        payload.role = form.role
+      }
+      await updateUserById(selectedUser.value.id, payload)
       Message.success('更新成功')
     }
     
@@ -269,9 +274,8 @@ const formatDate = (dateStr: string | undefined) => {
 
 const getRoleText = (role: string) => {
   const roleMap: Record<string, string> = {
-    admin: '管理员',
-    editor: '编辑',
-    user: '普通用户'
+    admin: '超级管理员',
+    editor: '普通管理员'
   }
   return roleMap[role] || role
 }
@@ -309,7 +313,7 @@ onMounted(() => {
           type="info" 
           show-icon
         >
-          管理系统用户，可以添加、编辑、启用/停用和删除用户。管理员拥有所有权限。
+          管理系统用户，可以添加、编辑、启用/停用和删除用户。仅超级管理员可访问本页面。
         </a-alert>
 
         <a-table
@@ -327,7 +331,7 @@ onMounted(() => {
           @page-change="handlePageChange"
         >
           <template #role="{ record }">
-            <a-tag :color="record.role === 'admin' ? 'red' : record.role === 'editor' ? 'blue' : 'green'">
+            <a-tag :color="record.role === 'admin' ? 'red' : 'blue'">
               {{ getRoleText(record.role) }}
             </a-tag>
           </template>
@@ -448,8 +452,11 @@ onMounted(() => {
         </a-form-item>
 
         <a-form-item label="角色" field="role">
-          <a-select v-model="form.role" :options="roleOptions" />
-          <div class="form-hint">管理员拥有所有权限</div>
+          <a-select v-model="form.role" :options="roleOptions" :disabled="selectedUserIsSuperAdmin" />
+          <div class="form-hint">
+            <template v-if="selectedUserIsSuperAdmin">超级管理员角色不可在此修改</template>
+            <template v-else>超级管理员拥有所有权限，普通管理员按订阅隔离数据</template>
+          </div>
         </a-form-item>
 
         <a-form-item label="权限" field="permissions">

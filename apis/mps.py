@@ -499,7 +499,7 @@ async def add_mp(
         
         if existing_feed:
             feed = existing_feed
-            # 仅管理员可覆盖全局公众号的展示信息，普通用户仅建立自己的订阅关系
+            # 仅超级管理员可覆盖全局公众号的展示信息，普通管理员仅建立自己的订阅关系
             if current_user.get("role") == "admin":
                 existing_feed.mp_name = mp_name
                 existing_feed.mp_cover = local_avatar_path
@@ -590,7 +590,7 @@ async def delete_mp(
             session.delete(mp)
             message = "订阅号已全局删除"
         else:
-            # 普通用户：仅取消自己的订阅（不影响其他用户）
+            # 普通管理员：仅取消自己的订阅（不影响其他用户）
             sub = session.query(Subscription).filter(
                 Subscription.user_id == current_user["username"],
                 Subscription.feed_id == mp_id
@@ -642,7 +642,7 @@ async def update_mp_status(
             )
         
         if current_user.get("role") != "admin":
-            # 普通用户：仅维护自己订阅维度的启用/停用状态
+            # 普通管理员：仅维护自己订阅维度的启用/停用状态
             sub = session.query(Subscription).filter(
                 Subscription.user_id == current_user["username"],
                 Subscription.feed_id == mp_id

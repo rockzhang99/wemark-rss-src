@@ -65,7 +65,7 @@ const routes = [
         component: ConfigList,
         meta: { 
           requiresAuth: true,
-          permissions: ['config:view'] 
+          permissions: ['admin'] 
         }
       },
       {
@@ -84,7 +84,7 @@ const routes = [
         props: true,
         meta: { 
           requiresAuth: true,
-          permissions: ['config:view'] 
+          permissions: ['admin'] 
         }
       },
       {
@@ -231,7 +231,7 @@ const routes = [
         component: () => import('@/views/WechatStatus.vue'),
         meta: { 
           requiresAuth: true,
-          permissions: ['wechat:manage'] 
+          permissions: ['admin'] 
         }
       },
       {

@@ -19,7 +19,7 @@ if __name__ == '__main__':
     print("环境变量:")
     for k,v in os.environ.items():
         print(f"{k}={v}")
-    if cfg.args.init=="True":
+    if str(cfg.args.init).lower() in ("true","1","yes","y"):
         import init_sys as init
         init.init()
     start_auth_service()
@@ -62,7 +62,7 @@ if __name__ == '__main__':
         from jobs.cascade_task_dispatcher import cascade_schedule_service
         cascade_schedule_service.start()
 
-    if  cfg.args.job =="True" and cfg.get("server.enable_job",False):
+    if  str(cfg.args.job).lower() in ("true","1","yes","y") and cfg.get("server.enable_job",False):
         from jobs import start_job
         threading.Thread(target=start_job,daemon=False).start()
         print_success("已开启定时任务")

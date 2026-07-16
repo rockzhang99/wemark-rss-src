@@ -338,6 +338,9 @@ def requires_role(role: str):
 
 # ===== 角色 -> 默认权限映射（RBAC） =====
 # 统一权限词表与前端 web_ui/src/router/index.ts 的 meta.permissions 保持一致
+# 角色体系（2026-07-16 重构）：移除普通用户(user)，仅保留两级：
+#   - admin  : 超级管理员（默认初始账号角色，拥有全部权限，可查看/管理所有数据）
+#   - editor : 普通管理员（拥有标签/消息任务的编辑权限，但数据仍按订阅关系隔离，无法查看他人数据）
 ROLE_PERMISSIONS = {
     "admin": [
         "subscription:view", "wechat:manage",
@@ -349,12 +352,6 @@ ROLE_PERMISSIONS = {
         "subscription:view", "wechat:manage",
         "tag:view", "tag:edit",
         "message_task:view", "message_task:edit",
-        "config:view",
-    ],
-    "user": [
-        "subscription:view", "wechat:manage",
-        "tag:view",
-        "message_task:view",
         "config:view",
     ],
 }
@@ -372,7 +369,7 @@ def get_effective_permissions(user) -> list:
         perms = []
     if isinstance(perms, list) and perms:
         return perms
-    return ROLE_PERMISSIONS.get(getattr(user, "role", "user"), ROLE_PERMISSIONS["user"])
+    return ROLE_PERMISSIONS.get(getattr(user, "role", "editor"), ROLE_PERMISSIONS["editor"])
 
 
 def require_permissions(*required: str):

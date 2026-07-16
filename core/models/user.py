@@ -5,7 +5,7 @@ class User(Base):
     username = Column(String(50), unique=True, nullable=False)
     password_hash = Column(String(255), nullable=False)
     is_active = Column(Boolean, default=True)
-    role = Column(String(20))  # admin/editor/user
+    role = Column(String(20))  # admin(超级管理员) / editor(普通管理员)
     permissions = Column(Text)  # 权限列表
     nickname = Column(String(50), default='')  # 昵称
     avatar = Column(String(255), default='/static/default-avatar.png')  # 头像

@@ -6,7 +6,7 @@
         <div class="logo">
           <img :src="logo" alt="avatar" :width="60" style="margin-right:1rem;">
           <router-link to="/">{{ appTitle }}</router-link>
-          <a-tooltip v-if="hasLogined" :content="!haswxLogined ? '未授权，请扫码登录' : '点我扫码授权'" position="bottom" :default-popup="!haswxLogined">
+          <a-tooltip v-if="hasLogined && canManageWechatAuth" :content="!haswxLogined ? '未授权，请扫码登录' : '点我扫码授权'" position="bottom" :default-popup="!haswxLogined">
             <icon-scan @click="showAuthQrcode()" :style="{ marginLeft: '10px', cursor: 'pointer', color: !haswxLogined ? '#f00' : '#000' }"/>
           </a-tooltip>
         </div>
@@ -38,7 +38,7 @@
               <template #icon><icon-lock /></template>
               修改密码
             </a-doption>
-            <a-doption @click="showAuthQrcode">
+            <a-doption @click="showAuthQrcode" v-if="canManageWechatAuth">
               <template #icon><icon-scan /></template>
               扫码授权
             </a-doption>
@@ -109,6 +109,7 @@ import {
   initBrowserNotification 
 } from '@/utils/browserNotification'
 import { useRouter, useRoute } from 'vue-router'
+import { useUserStore } from '@/store/user'
 import { Message } from '@arco-design/web-vue'
 import { getCurrentUser } from '@/api/auth'
 import { logout } from '@/api/auth'
@@ -125,6 +126,9 @@ const handleQrAuthSuccess = () => {
 }
 provide('showAuthQrcode', showAuthQrcode)
 const appTitle = computed(() => import.meta.env.VITE_APP_TITLE || '微信公众号订阅助手')
+// 授权管理入口（顶栏扫码图标、下拉"扫码授权"）仅超级管理员可见
+const { hasPermission } = useUserStore()
+const canManageWechatAuth = computed(() => hasPermission('admin'))
 const logo = ref("/static/logo.svg")
 const router = useRouter()
 const route = useRoute()

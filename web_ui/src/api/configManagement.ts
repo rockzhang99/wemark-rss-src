@@ -12,7 +12,9 @@ export const getConfig = (key: string) => {
   return http.get<ConfigManagement>(`/wx/configs/${key}`)
 }
 
-
+export const syncConfigs = () => {
+  return http.post('/wx/configs/sync')
+}
 
 export const createConfig = (data: ConfigManagementUpdate) => {
   return http.post('/wx/configs', data)

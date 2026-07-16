@@ -576,7 +576,6 @@ async def get_articles(
             article_dict["has_content"] = int(getattr(article, "has_content", 0) or 0)
             article_list.append(article_dict)
         
-        from .base import success_response
         return success_response({
             "list": article_list,
             "total": total

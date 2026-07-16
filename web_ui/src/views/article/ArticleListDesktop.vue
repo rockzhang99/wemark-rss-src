@@ -132,7 +132,7 @@
                   </a-doption>
                 </template>
               </a-dropdown>
-              <a-button @click="handleAuthClick">
+              <a-button @click="handleAuthClick" v-if="canManageWechatAuth">
                 <template #icon><icon-scan /></template>
                 刷新授权
               </a-button>
@@ -171,7 +171,7 @@
         </a-page-header>
 
         <a-card style="border:0">
-          <a-alert type="success" closable>{{ activeFeed?.mp_intro || "请选择一个公众号码进行管理,搜索文章后再点击订阅会有惊喜哟！！！" }}</a-alert>
+          <a-alert v-if="activeFeed?.mp_intro" type="success" closable>{{ activeFeed.mp_intro }}</a-alert>
           <div class="search-bar">
             <a-input-search class="search-input" v-model="searchText" placeholder="搜索文章标题" @search="handleSearch" @keyup.enter="handleSearch"
               allow-clear />
@@ -355,6 +355,7 @@ import ExportModal from '@/components/ExportModal.vue'
 import { addFeaturedArticle, getFeaturedArticleTaskStatus, getSubscriptions, UpdateMps, toggleMpStatus as toggleMpStatusApi } from '@/api/subscription'
 import { inject } from 'vue'
 import { Message, Modal } from '@arco-design/web-vue'
+import { useUserStore } from '@/store/user'
 import { formatDateTime, formatTimestamp } from '@/utils/date'
 import router from '@/router'
 import { deleteMpApi } from '@/api/subscription'
@@ -386,6 +387,10 @@ const mpSearchText = ref('')
 const articleFilterType = ref('') // 单选筛选: 'favorite' | 'has_content' | 'no_content' | 'updating' | 'deleted'
 const featuredArticleModalVisible = ref(false)
 const featuredArticleUrl = ref('')
+
+// 授权管理（含订阅管理中的"刷新授权"按钮）仅超级管理员可见
+const { hasPermission } = useUserStore()
+const canManageWechatAuth = computed(() => hasPermission('admin'))
 
 const pagination = ref({
   current: 1,

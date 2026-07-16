@@ -4,17 +4,18 @@ import {
   listConfigs, 
   createConfig, 
   updateConfig, 
-  deleteConfig 
+  deleteConfig,
+  syncConfigs
 } from '@/api/configManagement'
+
 import type { ConfigManagement } from '@/types/configManagement'
-import { Modal } from '@arco-design/web-vue'
+import { Message, Modal } from '@arco-design/web-vue'
 
 const columns = [
   { title: '配置键', dataIndex: 'config_key' },
   { title: '配置值', dataIndex: 'config_value', width: '30%', ellipsis: true },
   { title: '描述', dataIndex: 'description' },
-  // { title: '状态', slotName: 'status' },
-  // { title: '操作', slotName: 'action' }
+  { title: '操作', slotName: 'action' }
 ]
 
 const configList = ref<any>([])
@@ -72,6 +73,7 @@ const handleSubmit = async () => {
       await updateConfig(form.config_key, form)
     }
     visible.value = false
+    Message.success('保存成功，重启服务后生效')
     fetchConfigs()
   } catch (err) {
     error.value = err instanceof Error ? err.message : '保存配置失败'
@@ -87,6 +89,7 @@ const deleteConfigItem = async (key: string) => {
     onOk: async () => {
       try {
         await deleteConfig(key)
+        Message.success('删除成功')
         fetchConfigs()
       } catch (err) {
         error.value = err instanceof Error ? err.message : '删除配置失败'
@@ -100,6 +103,19 @@ const handlePageChange = (page: number) => {
   fetchConfigs()
 }
 
+const handleSync = async () => {
+  try {
+    loading.value = true
+    await syncConfigs()
+    Message.success('已从 config.yaml 同步到数据库')
+    fetchConfigs()
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '同步配置失败'
+  } finally {
+    loading.value = false
+  }
+}
+
 onMounted(() => {
   fetchConfigs()
 })
@@ -109,6 +125,9 @@ onMounted(() => {
   <div class="config-management">
     <a-card title="配置" :bordered="false">
       <a-space direction="vertical" fill>
+        <a-space>
+          <a-button type="primary" @click="handleSync">从 config.yaml 同步</a-button>
+        </a-space>
         <a-alert v-if="error" type="error" show-icon>{{ error }}</a-alert>
         
         <a-table
@@ -125,7 +144,8 @@ onMounted(() => {
           
           <template #action="{ record }">
             <a-space>
-              <!-- 操作按钮已隐藏 -->
+              <a-button size="small" type="text" @click="editConfig(record)">编辑</a-button>
+              <a-button size="small" type="text" status="danger" @click="deleteConfigItem(record.config_key)">删除</a-button>
             </a-space>
           </template>
         </a-table>

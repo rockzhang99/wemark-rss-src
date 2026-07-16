@@ -35,10 +35,35 @@ class ConfigManager:
         config = self._load_config()
         return self._convert_to_nested_dict(config)
         
-    def _store_single_config(self, key, value, description=""):
+    def store_config_to_db(self):
+        """将配置文件中的所有配置项存储到数据库（递归支持多层嵌套）"""
+        self.logger.info("开始存储配置到数据库...")
+        config = self._load_config()
+        session = db.get_session()
+        try:
+            self._store_config_to_db_recursive(config, session)
+            session.commit()
+            self.logger.info("配置已成功存储到ConfigManagement表")
+            return True
+        except Exception as e:
+            session.rollback()
+            self.logger.error(f"存储配置失败: {str(e)}")
+            return False
+
+    def _store_config_to_db_recursive(self, config, session, prefix=""):
+        """递归存储配置项到数据库，支持多层嵌套，键名以点号连接。"""
+        for key, value in config.items():
+            full_key = f"{prefix}.{key}" if prefix else key
+            if isinstance(value, dict):
+                self._store_config_to_db_recursive(value, session, full_key)
+            else:
+                self._store_single_config(session, full_key, value)
+
+    def _store_single_config(self, session, key, value, description=""):
         """存储单个配置项到数据库
         
         Args:
+            session: 数据库会话
             key: 配置项键名
             value: 配置项值
             description: 配置项描述，会自动处理：
@@ -61,7 +86,7 @@ class ConfigManager:
             # 限制长度
             description = description[:255]
             
-            db.get_session().merge(ConfigManagement(
+            session.merge(ConfigManagement(
                 config_key=key,
                 config_value=str(value) if value is not None else '',
                 description=description
@@ -70,37 +95,6 @@ class ConfigManager:
         except Exception as e:
             self.logger.error(f"存储配置项 {key} 失败: {str(e)}")
             raise
-            
-    def store_config_to_db(self):
-        """将配置文件中的所有配置项存储到数据库"""
-        self.logger.info("开始存储配置到数据库...")
-        config = self._load_config()
-        session=db.get_session()
-        try:
-            for key, value in config.items():
-                if isinstance(value, dict):
-                    # 处理嵌套配置
-                    for sub_key, sub_value in value.items():
-                        config_key = f"{key}.{sub_key}"
-                        self._store_single_config(
-                            config_key, 
-                            sub_value,
-                            f"{key}配置的子项"
-                        )
-                else:
-                    self._store_single_config(
-                        key, 
-                        value,
-                        "系统配置项"
-                    )
-            
-            session.commit()
-            self.logger.info("配置已成功存储到ConfigManagement表")
-            return True
-        except Exception as e:
-            session.rollback()
-            self.logger.error(f"存储配置失败: {str(e)}")
-            return False
             
     def store_config_to_list(self,config=None) -> list:
         """

@@ -94,7 +94,7 @@ const brandName = import.meta.env.VITE_APP_TITLE || 'WemarkRss'
 
 const menuItems = [
   { key: '/', label: '订阅管理', icon: IconHome },
-  { key: '/wechat-status', label: '授权管理', icon: IconWechat, permission: 'wechat:manage' },
+  { key: '/wechat-status', label: '授权管理', icon: IconWechat, permission: 'admin' },
   { key: '/export/records', label: '导出记录', icon: IconExport, permission: 'config:view' },
   { key: '/tags', label: '标签管理', icon: IconTag, permission: 'tag:view' },
   { key: '/message-tasks', label: '消息任务', icon: IconNotification, permission: 'message_task:view' },
@@ -105,7 +105,7 @@ const menuItems = [
   { key: '/access-keys', label: 'Access Key', icon: IconLock, permission: 'admin' },
   { key: '/users', label: '用户管理', icon: IconUser, permission: 'admin' },
   { key: '/env-exception', label: '异常统计', icon: IconExclamationCircle, permission: 'admin' },
-  { key: '/configs', label: '配置信息', icon: IconSettings, permission: 'config:view' },
+  { key: '/configs', label: '配置信息', icon: IconSettings, permission: 'admin' },
   { key: '/sys-info', label: '系统信息', icon: IconInfoCircle, permission: 'admin' }
 ]
 

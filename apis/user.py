@@ -137,6 +137,20 @@ async def add_user(
                 )
             )
 
+        # 角色校验：仅允许创建普通管理员(editor)；超级管理员(admin)只能通过初始化脚本创建，
+        # 禁止通过用户管理接口创建或提升为超级管理员，避免越权。
+        new_role = user_data.get("role", "editor")
+        if new_role not in ("admin", "editor"):
+            new_role = "editor"
+        if new_role == "admin":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=error_response(
+                    code=40003,
+                    message="不能通过此接口创建超级管理员，请使用初始化脚本"
+                )
+            )
+
         # 创建新用户
         import json
         import uuid
@@ -146,7 +160,7 @@ async def add_user(
             password_hash=pwd_context.hash(user_data["password"]),
             email=user_data.get("email", ""),
             nickname=user_data.get("nickname", ""),
-            role=user_data.get("role", "user"),
+            role=new_role,
             permissions=json.dumps(user_data.get("permissions", [])) if user_data.get("permissions") else "",
             is_active=user_data.get("is_active", True),
             created_at=datetime.now(),
@@ -194,7 +208,18 @@ async def update_user_by_id(
         if "email" in update_data:
             user.email = update_data["email"]
         if "role" in update_data:
-            user.role = update_data["role"]
+            new_role = update_data["role"]
+            if new_role not in ("admin", "editor"):
+                new_role = "editor"
+            if new_role == "admin":
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=error_response(
+                        code=40003,
+                        message="不能通过此接口将用户提升为超级管理员"
+                    )
+                )
+            user.role = new_role
         if "permissions" in update_data:
             user.permissions = json.dumps(update_data["permissions"]) if update_data["permissions"] else ""
         if "is_active" in update_data:

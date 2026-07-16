@@ -1,1 +1,0 @@
-import{f as e}from"./http-AHzDAday.js";export{e as getArticles};

@@ -41,6 +41,19 @@ def init_user(_db: Db):
     except Exception as e:
         # print_error(f"Init error: {str(e)}")
         pass
+def migrate_user_roles(_db: Db):
+    """角色体系重构（2026-07-16）：将历史普通用户(user)统一迁移为普通管理员(editor)。"""
+    try:
+        session = _db.get_session()
+        updated = session.query(User).filter(User.role == 'user').update(
+            {User.role: 'editor'}, synchronize_session=False
+        )
+        session.commit()
+        if updated:
+            print_info(f"角色迁移完成：{updated} 个普通用户已升级为普通管理员(editor)")
+    except Exception:
+        pass
+
 def sync_models():
      # 同步模型到表结构
          from data_sync import DatabaseSynchronizer
@@ -56,6 +69,14 @@ def sync_models():
 def init():
     sync_models()
     init_user(DB)
+    migrate_user_roles(DB)
+    # 将 config.yaml 同步到 config_management 表，确保配置信息页有数据可管理
+    try:
+        from core.yaml_db.store_config import ConfigManager
+        manager = ConfigManager()
+        manager.store_config_to_db()
+    except Exception as e:
+        print_error(f"同步配置到数据库失败: {e}")
 
 if __name__ == '__main__':
     init()
