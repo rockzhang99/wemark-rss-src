@@ -187,17 +187,6 @@ wemark-rss/
 
 ---
 
-## 默认账号
-
-首次以 `-init True` 启动后会初始化管理员：
-
-- 账号：`admin`
-- 密码：`admin@123`
-
-请登录后立即修改密码。
-
----
-
 ## 文档导航
 
 - [INIT.md](./INIT.md) —— 详细的初始化、配置、运行与部署指南（含 Docker / 源码 / 常见问题）
@@ -208,13 +197,3 @@ wemark-rss/
 - `docs/` —— 各功能专项文档（AK 认证、级联系统、WebUI 快速上手等）
 
 ---
-
-## 致谢与许可
-
-本项目基于 [rachelos/we-mp-rss](https://github.com/rachelos/we-mp-rss) 重命名派生，原项目采用 MIT 许可。
-感谢原作者的开源贡献以及所有贡献者（cyChaos、子健MeLift、晨阳 等）。
-
-- 许可协议：**MIT**（见 [LICENSE](./LICENSE)）
-- 原项目赞助与致谢信息保留于文档与 `docs/` 中。
-
-> 注意：派生后已将全部 `we-mp-rss` 标识重命名为 `wemark-rss` / `WeMark-RSS`，但作者署名（如 `rachelos@qq.com`）与 `SAFE_LIC_KEY` 默认值 `RACHELOS` 等配置值予以保留，属正常署名与历史配置，不影响使用。
