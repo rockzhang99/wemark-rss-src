@@ -1,9 +1,38 @@
 import sys
+import os
+import shutil
 import asyncio
 
 # Windows 需要使用 ProactorEventLoop 以支持 Playwright 子进程
 if sys.platform == 'win32':
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+
+# ===== 打包(frozen)模式引导 =====
+# 仅在 PyInstaller 等打包后的可执行文件中生效, 开发态(python main.py)不受影响
+if getattr(sys, 'frozen', False):
+    # 切换到 exe 所在目录, 保证相对路径 config.yaml / static / data 解析正确
+    os.chdir(os.path.dirname(sys.executable))
+
+    # 首次运行: 从模板生成 config.yaml (避免把开发机敏感配置打进安装包)
+    if not os.path.exists('config.yaml') and os.path.exists('config.example.yaml'):
+        try:
+            shutil.copy('config.example.yaml', 'config.yaml')
+            print("[BOOT] 已从 config.example.yaml 生成 config.yaml")
+        except Exception as e:
+            print(f"[BOOT] 生成 config.yaml 失败: {e}")
+
+    # 首次运行: 自动安装 Playwright 浏览器(若缺失), 安装包本身不含浏览器以保持小巧
+    _marker = os.path.join('data', '.playwright_installed')
+    if not os.path.exists(_marker):
+        try:
+            os.makedirs('data', exist_ok=True)
+            print("[BOOT] 首次启动: 自动下载 Playwright Chromium (仅需联网一次) ...")
+            import subprocess
+            subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"],
+                           check=False)
+            open(_marker, 'w').close()
+        except Exception as e:
+            print(f"[BOOT] Playwright 浏览器自动安装失败(可稍后手动执行): {e}")
 
 from core.config import cfg
 if cfg.get("redis.server.enabled", False):
