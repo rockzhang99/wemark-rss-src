@@ -14,17 +14,21 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.openapi.models import OAuthFlows as OAuthFlowsModel
 from fastapi.openapi.models import OAuthFlowPassword
 from fastapi.openapi.utils import get_openapi
-from apis.auth import router as auth_router
+import apis
+import os
+from core.config import cfg,VERSION,API_BASE
+
+# 混合架构(改动036)：云端模式(deploy.role=cloud)不导入任何微信驱动相关路由/视图，
+# 从物理上保证云端进程永远不会调用微信接口（数据中心 IP 安全）。
+CLOUD = cfg.get("deploy.role", "agent") == "cloud"
+
+# 与微信无关、云端/本地都需要的路由
 from apis.user import router as user_router
-from apis.article import router as article_router
-from apis.mps import router as wx_router
 from apis.res import router as res_router
 from apis.rss import router as rss_router,feed_router
 from apis.config_management import router as config_router
 from apis.message_task import router as task_router
-from apis.sys_info import router as sys_info_router
 from apis.tags import router as tags_router
-from apis.export import router as export_router
 from apis.tools import router as tools_router
 from apis.github_update import router as github_router
 from apis.cascade import router as cascade_router
@@ -32,10 +36,16 @@ from apis.env_exception import router as env_exception_router
 from apis.filter_rule import router as filter_rule_router
 from apis.task_queue import router as task_queue_router
 from apis.proxy import router as proxy_router
-from views import router as views_router
-import apis
-import os
-from core.config import cfg,VERSION,API_BASE
+from apis.agent import router as agent_router
+
+# 仅本地 Agent 模式需要的微信相关路由/视图（云端排除，避免 import driver）
+if not CLOUD:
+    from apis.auth import router as auth_router
+    from apis.article import router as article_router
+    from apis.mps import router as wx_router
+    from apis.sys_info import router as sys_info_router
+    from apis.export import router as export_router
+    from views import router as views_router
 from starlette.middleware.base import BaseHTTPMiddleware
 
 class AKMiddleware(BaseHTTPMiddleware):
@@ -50,7 +60,7 @@ class AKMiddleware(BaseHTTPMiddleware):
         return response
 
 app = FastAPI(
-    title="WeRSS API",
+    title="WemarkRSS API",
     description="微信公众号RSS生成服务API文档",
     version="1.0.0",
     docs_url="/api/docs",  # 指定文档路径
@@ -87,19 +97,14 @@ async def add_custom_header(request: Request, call_next):
     response.headers["X-Version"] = VERSION
     response.headers["X-Powered-By"] = "YoruAki"
     response.headers["GITHUB"] = "https://github.com/wemark-rss/wemark-rss"
-    response.headers["Server"] = cfg.get("app_name", "WeRSS")
+    response.headers["Server"] = cfg.get("app_name", "WemarkRSS")
     return response
 # 创建API路由分组
 api_router = APIRouter(prefix=f"{API_BASE}")
-api_router.include_router(auth_router)
 api_router.include_router(user_router)
-api_router.include_router(article_router)
-api_router.include_router(wx_router)
 api_router.include_router(config_router)
 api_router.include_router(task_router)
-api_router.include_router(sys_info_router)
 api_router.include_router(tags_router)
-api_router.include_router(export_router)
 api_router.include_router(tools_router)
 api_router.include_router(github_router)
 api_router.include_router(cascade_router)
@@ -107,6 +112,13 @@ api_router.include_router(env_exception_router)
 api_router.include_router(filter_rule_router)
 api_router.include_router(task_queue_router)
 api_router.include_router(proxy_router)
+api_router.include_router(agent_router)
+if not CLOUD:
+    api_router.include_router(auth_router)
+    api_router.include_router(article_router)
+    api_router.include_router(wx_router)
+    api_router.include_router(sys_info_router)
+    api_router.include_router(export_router)
 
 resource_router = APIRouter(prefix="/static")
 resource_router.include_router(res_router)
@@ -117,7 +129,8 @@ feeds_router.include_router(feed_router)
 app.include_router(api_router)
 app.include_router(resource_router)
 app.include_router(feeds_router)
-app.include_router(views_router)
+if not CLOUD:
+    app.include_router(views_router)
 
 # 静态文件服务配置
 app.mount("/assets", StaticFiles(directory="static/assets"), name="assets")

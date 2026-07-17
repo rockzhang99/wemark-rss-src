@@ -10,7 +10,7 @@ def send_bark_message(webhook_url, title, text):
     - title: 消息标题
     - text: 消息内容
     """
-    title = (title or "WeRSS")[:200]
+    title = (title or "WemarkRSS")[:200]
     text = (text or "")[:2000]
 
     url = (webhook_url or "").strip()

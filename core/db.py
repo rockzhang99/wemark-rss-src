@@ -78,6 +78,7 @@ class Db:
             self.ensure_article_columns()
             self.ensure_isolation_columns()
             self.ensure_subscription_table()
+            self.ensure_tenant_columns()
         except Exception as e:
             print(f"Error creating database connection: {e}")
             raise
@@ -160,6 +161,29 @@ class Db:
             print_info(f"[{self.tag}] 已创建 subscriptions 表（多用户订阅隔离）")
         except Exception as e:
             print_warning(f"[{self.tag}] 检查/创建 subscriptions 表失败: {e}")
+    def ensure_tenant_columns(self):
+        """混合架构(改动036)：为 feeds / articles 补充 tenant_id 列，用于云端多租户隔离。
+        - 新装实例由 create_all 建表时自带（模型已含 tenant_id）；
+        - 此处仅处理已存在的旧表，将历史数据归属回填为 'admin'（单租户遗留数据）。
+        """
+        try:
+            inspector = inspect(self.engine)
+            tables = set(inspector.get_table_names())
+            for tbl in ("feeds", "articles"):
+                if tbl not in tables:
+                    continue
+                columns = {column["name"] for column in inspector.get_columns(tbl)}
+                if "tenant_id" not in columns:
+                    with self.engine.begin() as conn:
+                        conn.execute(text(f"ALTER TABLE {tbl} ADD COLUMN tenant_id VARCHAR(255)"))
+                        conn.execute(text(f"CREATE INDEX ix_{tbl}_tenant_id ON {tbl} (tenant_id)"))
+                    print_info(f"[{self.tag}] {tbl} 已添加 tenant_id 列（多租户隔离）")
+            # 历史数据回填：未设置 tenant_id 的行统一归 admin（平台初始管理员/单租户遗留）
+            with self.engine.begin() as conn:
+                conn.execute(text("UPDATE feeds SET tenant_id='admin' WHERE tenant_id IS NULL"))
+                conn.execute(text("UPDATE articles SET tenant_id='admin' WHERE tenant_id IS NULL"))
+        except Exception as e:
+            print_warning(f"[{self.tag}] 检查/更新租户列(tenant_id)失败: {e}")
     def create_tables(self):
         """Create all tables defined in models"""
         from core.models.base import Base as B # 导入所有模型

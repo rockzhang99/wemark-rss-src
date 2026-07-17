@@ -1,0 +1,26 @@
+# 云端(RSS 服务端)部署 —— 改动036 阶段3
+# 用法：
+#   docker compose -f compose/docker-compose.cloud.yaml up -d --build
+# 说明：
+#   - 镜像基于 Dockerfiles/cloud/Dockerfile，已物理删除微信驱动代码，不会下载 Chromium。
+#   - DEPLOY_ROLE=cloud 使 main.py 跳过本地授权/定时任务，仅提供 RSS + 上传 API。
+#   - 本地 Agent 端 config.yaml 填 upload.server=http://<本机IP>:8001 与对应 AK/SK 即可上传。
+services:
+  wemark-rss-cloud:
+    build:
+      context: ..
+      dockerfile: Dockerfiles/cloud/Dockerfile
+    image: wemark-rss-cloud:latest
+    container_name: wemark-rss-cloud
+    environment:
+      DEPLOY_ROLE: cloud
+      # 如使用外部数据库，覆盖下方 DB 即可（sqlite 示例见 config.yaml）
+      # DB: mysql+pymysql://user:pass@db/wemark
+    ports:
+      - "8001:8001"
+    volumes:
+      - cloud-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  cloud-data:

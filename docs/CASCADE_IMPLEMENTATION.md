@@ -1,4 +1,4 @@
-# WeRSS 级联系统实现总结
+# WemarkRSS 级联系统实现总结
 
 ## 实现完成情况
 
@@ -317,7 +317,7 @@ curl http://localhost:8001/api/v1/cascade/sync-logs \
 
 ## 总结
 
-WeRSS 级联系统已完整实现，支持：
+WemarkRSS 级联系统已完整实现，支持：
 
 ✅ 完整的父子节点架构
 ✅ 灵活的AK/SK认证体系

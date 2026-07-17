@@ -40,6 +40,8 @@ class ArticleBase(Base):
     is_favorite = Column(Integer, default=0)  # 是否收藏
     fix_fail_count = Column(Integer, default=0)  # 修正内容失败次数
     has_content = Column(Integer, default=0, index=True)  # 是否有正文内容（0=无，1=有），用于加速查询
+    # 混合架构(改动036)多租户隔离：标记该文章归属的租户（云端按此过滤 RSS）
+    tenant_id = Column(String(255), index=True)
 class Article(ArticleBase):
     content = Column(Text)
     content_html = Column(Text)

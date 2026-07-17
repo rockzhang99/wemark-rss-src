@@ -177,7 +177,7 @@ npm run build
 ```yaml
 # config.yaml
 server:
-  web_name: "WeRSS"
+  web_name: "WemarkRSS"
 ```
 
 ### 访问地址

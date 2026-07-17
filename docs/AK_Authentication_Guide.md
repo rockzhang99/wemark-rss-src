@@ -2,7 +2,7 @@
 
 ## 概述
 
-WeRSS 现已支持 Access Key (AK) 认证方式，用于程序化访问 API。本 UI 界面提供了完整的 AK 管理功能。
+WemarkRSS 现已支持 Access Key (AK) 认证方式，用于程序化访问 API。本 UI 界面提供了完整的 AK 管理功能。
 
 ## 功能特性
 

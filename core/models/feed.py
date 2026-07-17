@@ -17,3 +17,5 @@ class Feed(Base):
     created_at = Column(DateTime) 
     updated_at = Column(DateTime)
     faker_id = Column(String(255))
+    # 混合架构(改动036)多租户隔离：标记该公众号目录归属的租户（云端按此过滤 RSS）
+    tenant_id = Column(String(255), index=True)

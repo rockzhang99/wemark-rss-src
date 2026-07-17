@@ -1,6 +1,6 @@
 <div align=center>
 <img src="static/logo.svg" alt="WeMark-RSS Logo" width="20%">
-<h1>WeRSS - 微信公众号订阅助手</h1>
+<h1>WemarkRSS - 微信公众号订阅助手</h1>
 
 [![Python Version](https://img.shields.io/badge/python-3.13.1+-red.svg)]()
 [![License](https://img.shields.io/badge/license-MIT-green.svg)]()
@@ -167,11 +167,11 @@ http://localhost:3000
 |----------|--------|------|
 | `APP_NAME` | `wemark-rss` | 应用名称 |
 | `SERVER_NAME` | `wemark-rss` | 服务名称 |
-| `WEB_NAME` | `WeRSS微信公众号订阅助手` | 前端显示名称 |
-| `WERSS_AUTH_WEB` | `False` | 通过web方式授权 |
+| `WEB_NAME` | `WemarkRSS微信公众号订阅助手` | 前端显示名称 |
+| `WEMARKRSS_AUTH_WEB` | `False` | 通过web方式授权 |
 | `BROWSER_TYPE` | `firefox` | 浏览器类型默认firefox |
 | `SEND_CODE` | `False` | 过期通知中是否附带授权二维码（默认仅发送文字通知） |
-| `CODE_TITLE` | `WeRSS授权二维码` | 二维码通知标题 |
+| `CODE_TITLE` | `WemarkRSS授权二维码` | 二维码通知标题 |
 | `ENABLE_JOB` | `True` | 是否启用定时任务 |
 | `AUTO_RELOAD` | `False` | 代码修改自动重启服务 |
 | `THREADS` | `2` | 最大线程数 |
@@ -221,11 +221,11 @@ http://localhost:3000
 
 ## Access Key 认证
 
-WeRSS 支持使用 Access Key (AK) 进行 API 认证，适用于程序化访问和自动化脚本。
+WemarkRSS 支持使用 Access Key (AK) 进行 API 认证，适用于程序化访问和自动化脚本。
 
 ### 创建 Access Key
 
-1. 登录 WeRSS 管理界面
+1. 登录 WemarkRSS 管理界面
 2. 进入"Access Key 管理"页面
 3. 点击"创建 Access Key"按钮
 4. 填写名称、描述、权限和过期时间
@@ -279,7 +279,7 @@ fetch(`${baseUrl}/api/feeds`, { headers })
 
 ## HTML 内容过滤规则
 
-WeRSS 支持自定义 HTML 内容过滤规则，可以在采集文章内容时自动清理不需要的元素，如广告、推荐链接等。
+WemarkRSS 支持自定义 HTML 内容过滤规则，可以在采集文章内容时自动清理不需要的元素，如广告、推荐链接等。
 
 ### 功能特点
 

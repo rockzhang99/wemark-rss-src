@@ -173,7 +173,7 @@ def check_config():
 
 
 def main():
-    parser = argparse.ArgumentParser(description="WeRSS 级联系统初始化工具")
+    parser = argparse.ArgumentParser(description="WemarkRSS 级联系统初始化工具")
     parser.add_argument("--init", action="store_true", help="初始化数据库表")
     parser.add_argument("--parent", metavar="NAME", help="创建父节点")
     parser.add_argument("--child", metavar="NAME", help="创建子节点")

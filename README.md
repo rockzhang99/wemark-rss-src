@@ -96,6 +96,12 @@ docker compose -f docker-compose.yaml up -d
 
 1. 安装后端依赖（Python ≥ 3.13.1）：
 
+# 2. 建虚拟环境
+python -m venv venv
+
+# 3. 激活（PowerShell）
+.\venv\Scripts\Activate.ps1
+
 ```bash
 pip install -r requirements.txt
 ```
@@ -110,6 +116,7 @@ cp config.example.yaml config.yaml
 3. 启动后端（首次运行加 `-init True` 初始化数据库与管理员）：
 
 ```bash
+.\venv\Scripts\Activate.ps1
 python main.py -job True -init True
 ```
 
@@ -134,7 +141,7 @@ npm run build    # 生产构建，产物写入 static/
 |---|---|---|
 | `APP_NAME` | `wemark-rss` | 应用名称 |
 | `SERVER_NAME` | `wemark-rss` | 服务名称 |
-| `WEB_NAME` | `WeRSS微信公众号订阅助手` | 前端显示名 |
+| `WEB_NAME` | `WemarkRSS微信公众号订阅助手` | 前端显示名 |
 | `DB` | `sqlite:///./data/db.db` | 数据库连接串 |
 | `PORT` | `8001` | API 端口 |
 | `SECRET_KEY` | `wemark-rss` | 密钥（生产务必修改） |

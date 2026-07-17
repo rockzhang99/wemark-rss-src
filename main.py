@@ -35,13 +35,28 @@ if getattr(sys, 'frozen', False):
             print(f"[BOOT] Playwright 浏览器自动安装失败(可稍后手动执行): {e}")
 
 from core.config import cfg
+
+# 混合架构(改动036)：云端模式禁止打包/导入微信驱动
+ROLE = cfg.get("deploy.role", "agent")
+if ROLE == "cloud":
+    try:
+        import driver  # noqa: F401
+        raise RuntimeError(
+            "云端部署(deploy.role=cloud)不应包含微信驱动代码(driver/)，"
+            "请使用排除 driver 的云端构建/入口，否则数据中心 IP 可能直连微信而被封禁。"
+        )
+    except ImportError:
+        pass
+    print("[BOOT] 云端模式：已确认不包含微信驱动代码")
+
 if cfg.get("redis.server.enabled", False):
         from tools.redis_server import run_redis_server
         run_redis_server(config_path="config.yaml")
 import uvicorn
 from core.print import print_warning, print_info, print_success
 import threading
-from driver.auth import start_auth_service   
+if ROLE != "cloud":
+    from driver.auth import start_auth_service
 import os
 
 if __name__ == '__main__':
@@ -51,7 +66,8 @@ if __name__ == '__main__':
     if str(cfg.args.init).lower() in ("true","1","yes","y"):
         import init_sys as init
         init.init()
-    start_auth_service()
+    if ROLE != "cloud":
+        start_auth_service()
     # 启动级联同步服务（如果配置为子节点）
     cascade_service_started = False
     if cfg.get("cascade.enabled", False) and cfg.get("cascade.node_type") == "child":
@@ -85,20 +101,20 @@ if __name__ == '__main__':
     else:
         print_info("级联模式未启用或当前节点为父节点")
     
-    if not cascade_service_started:
+    if not cascade_service_started and ROLE != "cloud":
         print_info("启动网关定时调度服务")
         import asyncio
         from jobs.cascade_task_dispatcher import cascade_schedule_service
         cascade_schedule_service.start()
 
-    if  str(cfg.args.job).lower() in ("true","1","yes","y") and cfg.get("server.enable_job",False):
+    if ROLE != "cloud" and str(cfg.args.job).lower() in ("true","1","yes","y") and cfg.get("server.enable_job",False):
         from jobs import start_job
         threading.Thread(target=start_job,daemon=False).start()
         print_success("已开启定时任务")
     else:
         print_warning("未开启定时任务")
     
-    if cfg.get("gather.content_auto_check",False):
+    if ROLE != "cloud" and cfg.get("gather.content_auto_check",False):
         from jobs import start_fix_article
         start_fix_article()
         print_success("已开启自动修正文章任务")
@@ -106,11 +122,20 @@ if __name__ == '__main__':
         print_warning("未开启自动修正文章任务")
     
     # 启动文章统计定时刷新任务
-    if cfg.get("server.article_stats_refresh_enabled", False):  # 默认关闭
+    if ROLE != "cloud" and cfg.get("server.article_stats_refresh_enabled", False):  # 默认关闭
         from jobs.mps import start_article_stats_refresh
         start_article_stats_refresh()
     else:
         print_warning("文章统计定时刷新任务未启用")
+    
+    # 混合架构(改动036) 阶段2：本地 Agent 云端上传器（仅 agent 模式）
+    if ROLE != "cloud":
+        try:
+            from core.uploader import uploader
+            uploader.init()
+            uploader.start()
+        except Exception as e:
+            print_warning(f"启动云端上传器失败: {e}")
     
     print("启动服务器")
     AutoReload=cfg.get("server.auto_reload",False)

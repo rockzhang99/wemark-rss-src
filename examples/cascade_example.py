@@ -1,5 +1,5 @@
 """
-WeRSS 级联系统使用示例
+WemarkRSS 级联系统使用示例
 
 演示如何使用Python客户端与父节点交互
 """
@@ -216,7 +216,7 @@ async def example_complete_workflow():
     """完整工作流示例"""
     
     print("="*60)
-    print("WeRSS 级联系统完整工作流示例")
+    print("WemarkRSS 级联系统完整工作流示例")
     print("="*60)
     print()
     
@@ -310,7 +310,7 @@ async def main():
             print("  python cascade_example.py child <ak> <sk> - 子节点操作示例")
             print("  python cascade_example.py workflow  - 完整工作流示例")
     else:
-        print("WeRSS 级联系统使用示例")
+        print("WemarkRSS 级联系统使用示例")
         print()
         print("用法:")
         print("  python cascade_example.py parent    - 父节点操作示例")

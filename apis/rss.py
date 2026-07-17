@@ -6,10 +6,61 @@ from core.rss import RSS
 from core.models.feed import Feed
 import json
 from .base import success_response, error_response
-from core.auth import get_current_user
+from core.auth import (get_current_user, get_current_user_or_ak, authenticate_ak,
+                       get_user, get_effective_permissions, SECRET_KEY, ALGORITHM)
+import jwt
 from core.config import cfg
 from apis.base import format_search_kw
 from core.print import print_error,print_success
+from typing import Optional
+
+
+async def _rss_tenant_dep(request: Request) -> Optional[str]:
+    """解析 RSS 访问者租户(改动036 多租户隔离)。
+    - 非云端模式(本地 Agent)：返回 None，保持原有开放访问、不过滤（向后兼容）。
+    - 云端模式：必须携带认证（Authorization 头 或 ?token= 查询参数，供 RSS 阅读器订阅）；
+      超级管理员(admin)返回 None 看全部，其余按租户过滤。
+    """
+    if cfg.get("deploy.role", "agent") != "cloud":
+        return None
+
+    # 解析凭证：优先 Authorization 头，其次 ?token= 查询参数（阅读器常把 token 放 URL）
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header:
+        q = request.query_params.get("token")
+        if q:
+            auth_header = q if q.startswith(("AK-SK ", "Bearer ")) else f"Bearer {q}"
+
+    current_user = None
+    if auth_header.startswith("AK-SK "):
+        cred = auth_header[6:].strip()
+        if ":" in cred:
+            ak, sk = cred.split(":", 1)
+            current_user = authenticate_ak(ak, sk)
+    elif auth_header.startswith("Bearer "):
+        try:
+            payload = jwt.decode(auth_header[7:].strip(), SECRET_KEY, algorithms=[ALGORITHM])
+            username = payload.get("sub")
+            if username:
+                u = get_user(username)
+                if u:
+                    current_user = {
+                        "username": u.username,
+                        "role": u.role,
+                        "permissions": get_effective_permissions(u),
+                        "original_user": u,
+                    }
+        except Exception:
+            current_user = None
+
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=error_response(code=40101, message="未授权的RSS访问"),
+        )
+    if current_user.get("role") == "admin":
+        return None
+    return current_user.get("user_id") or current_user.get("username")
 
 
 def clamp_rss_limit(limit: int) -> int:
@@ -44,9 +95,9 @@ async def get_rss_source(
     request: Request,
     limit: int = Query(100, ge=1, le=100),
     offset: int = Query(0, ge=0),
-    # current_user: dict = Depends(verify_rss_access)
+    tenant_id: Optional[str] = Depends(_rss_tenant_dep),
 ):
-    return await get_mp_articles_source(request=request,feed_id=feed_id, limit=limit,offset=offset, is_update=True)
+    return await get_mp_articles_source(request=request,feed_id=feed_id, limit=limit,offset=offset, is_update=True, tenant_id=tenant_id)
 
 
 
@@ -57,9 +108,9 @@ async def update_rss_feeds(
     request: Request,
     limit: int = Query(100, ge=1, le=100),
     offset: int = Query(0, ge=0),
-    # current_user: dict = Depends(get_current_user)
+    tenant_id: Optional[str] = Depends(_rss_tenant_dep),
 ):
-    return await get_rss_feeds(request=request, limit=limit,offset=offset, is_update=True)
+    return await get_rss_feeds(request=request, limit=limit,offset=offset, is_update=True, tenant_id=tenant_id)
 
 @router.get("", summary="获取RSS订阅列表")
 async def get_rss_feeds(
@@ -67,7 +118,7 @@ async def get_rss_feeds(
     limit: int = Query(10, ge=1, le=30),
     offset: int = Query(0, ge=0),
     is_update:bool=False,
-    # current_user: dict = Depends(get_current_user)
+    tenant_id: Optional[str] = Depends(_rss_tenant_dep),
 ):
     limit = clamp_rss_limit(limit)
     rss=RSS(name=f'all_{limit}_{offset}')
@@ -80,7 +131,10 @@ async def get_rss_feeds(
     session = DB.get_session()
     try:
         total = session.query(Feed).count()
-        feeds = session.query(Feed).order_by(Feed.created_at.desc()).limit(limit).offset(offset).all()
+        feeds_q = session.query(Feed).order_by(Feed.created_at.desc())
+        if tenant_id is not None:
+            feeds_q = feeds_q.filter(Feed.tenant_id == tenant_id)
+        feeds = feeds_q.limit(limit).offset(offset).all()
         rss_domain=cfg.get("rss.base_url",request.base_url)
         # 转换为RSS格式数据
         from datetime import datetime, timezone, timedelta
@@ -96,7 +150,7 @@ async def get_rss_feeds(
         } for feed in feeds]
         
         # 生成RSS XML
-        rss_xml = rss.generate_rss(rss_list, title="WeRSS订阅",link=rss_domain)
+        rss_xml = rss.generate_rss(rss_list, title="WemarkRSS订阅",link=rss_domain)
         
         return Response(
             content=rss_xml,
@@ -113,7 +167,25 @@ async def get_rss_feeds(
         )
 
 @router.get("/content/{content_id}", summary="获取缓存的文章内容")
-async def get_rss_feed(content_id: str):
+async def get_rss_feed(
+    content_id: str,
+    request: Request,
+    tenant_id: Optional[str] = Depends(_rss_tenant_dep),
+):
+    # 云端模式：校验租户隔离，防止跨租户读取文章正文（改动036 阶段4 安全加固）
+    if cfg.get("deploy.role", "agent") == "cloud" and tenant_id is not None:
+        session = DB.get_session()
+        try:
+            from core.models.article import Article
+            art = session.query(Article).filter(Article.id == content_id).first()
+            if art is None or art.tenant_id != tenant_id:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=error_response(code=40402, message="文章内容未找到"),
+                )
+        finally:
+            session.close()
+
     rss = RSS()
     content = rss.get_cached_content(content_id)
       
@@ -166,6 +238,7 @@ async def update_rss_feeds(
     feed_id: str,
     limit: int = Query(100, ge=1, le=100),
     offset: int = Query(0, ge=0),
+    tenant_id: Optional[str] = Depends(_rss_tenant_dep),
     # current_user: dict = Depends(get_current_user)
 ):
         #如果需要放开授权，请只允许内网访问，防止 被利用攻击 放开授权办法，注释上面current_user: dict = Depends(get_current_user)
@@ -177,7 +250,7 @@ async def update_rss_feeds(
         # wx.get_Articles(mp.faker_id,Mps_id=mp.id,CallBack=UpdateArticle)
         # result=wx.articles
 
-        return await get_mp_articles_source(request=request,feed_id=feed_id, limit=limit,offset=offset, is_update=True)
+        return await get_mp_articles_source(request=request,feed_id=feed_id, limit=limit,offset=offset, is_update=True, tenant_id=tenant_id)
 
 
 
@@ -192,7 +265,8 @@ async def get_mp_articles_source(
     kw:str="",
     is_update:bool=True,
     content_type:str=Query(None,alias="ctype"),
-    template:str=None
+    template:str=None,
+    tenant_id: Optional[str] = None,
     # current_user: dict = Depends(get_current_user)
 ):
     limit = clamp_rss_limit(limit)
@@ -211,6 +285,8 @@ async def get_mp_articles_source(
         # 查询公众号信息
         feed = session.query(Feed)
         query=session.query(Feed, Article).join(Article, Feed.id == Article.mp_id)
+        if tenant_id is not None:
+            query = query.filter(Article.tenant_id == tenant_id)
         rss_domain = str(cfg.get("rss.base_url", str(request.base_url))).rstrip("/") + "/"
         if tag_id is not None:
             feed_link = f"{rss_domain}feed/tag/{tag_id}.{ext}"
@@ -221,7 +297,10 @@ async def get_mp_articles_source(
             target_feed_id = feed_id or "all"
             feed_link = f"{rss_domain}feed/{target_feed_id}.{ext}"
         if feed_id not in ["all",None]:
-            feed=feed.filter(Feed.id == feed_id).first()
+            feed_q = feed.filter(Feed.id == feed_id)
+            if tenant_id is not None:
+                feed_q = feed_q.filter(Feed.tenant_id == tenant_id)
+            feed=feed_q.first()
             query=query.filter(Article.mp_id==feed_id)
         else:
             feed=Feed()
@@ -230,7 +309,10 @@ async def get_mp_articles_source(
             feed.mp_cover=cfg.get("rss.cover") or f"{rss_domain}static/logo.svg"
             #如果传入了tag_id就加载tag对应的订阅信息
             if tag_id is not None:
-                tags=session.query(Tags).filter(Tags.id == tag_id).first()
+                tags_q = session.query(Tags).filter(Tags.id == tag_id)
+                if tenant_id is not None:
+                    tags_q = tags_q.filter(Tags.owner == tenant_id)
+                tags=tags_q.first()
                 if tags:
                     mps_ids = [str(mp['id']) for mp in json.loads(tags.mps_id)] if tags.mps_id else []
                     query=query.filter(Feed.id.in_(mps_ids))
@@ -313,9 +395,10 @@ async def rss(
     offset: int = Query(0, ge=0),
     kw:str="",
     content_type:str=Query(None,alias="ctype"),
-    is_update:bool=True
+    is_update:bool=True,
+    tenant_id: Optional[str] = Depends(_rss_tenant_dep),
 ):
-    return await get_mp_articles_source(request=request,feed_id=feed_id, limit=limit,offset=offset, is_update=is_update,ext=ext,kw=kw,content_type=content_type)
+    return await get_mp_articles_source(request=request,feed_id=feed_id, limit=limit,offset=offset, is_update=is_update,ext=ext,kw=kw,content_type=content_type, tenant_id=tenant_id)
 
 
 @feed_router.get("/search/{kw}/{feed_id}.{ext}", summary="获取公众号文章源")
@@ -327,9 +410,10 @@ async def rss(
     offset: int = Query(0, ge=0),
     kw:str="",
     content_type:str=Query(None,alias="ctype"),
-    is_update:bool=True
+    is_update:bool=True,
+    tenant_id: Optional[str] = Depends(_rss_tenant_dep),
 ):
-    return await get_mp_articles_source(request=request,feed_id=feed_id, limit=limit,offset=offset, is_update=is_update,ext=ext,kw=kw,content_type=content_type)
+    return await get_mp_articles_source(request=request,feed_id=feed_id, limit=limit,offset=offset, is_update=is_update,ext=ext,kw=kw,content_type=content_type, tenant_id=tenant_id)
 @feed_router.get("/tag/{tag_id}.{ext}", summary="获取公众号文章源")
 async def rss(
     request: Request,
@@ -340,8 +424,9 @@ async def rss(
     offset: int = Query(0, ge=0),
     kw:str="",
     content_type:str=Query(None,alias="ctype"),
-    is_update:bool=True
+    is_update:bool=True,
+    tenant_id: Optional[str] = Depends(_rss_tenant_dep),
 ):
-    return await get_mp_articles_source(request=request,feed_id=feed_id, tag_id=tag_id,limit=limit,offset=offset, is_update=is_update,ext=ext,kw=kw,content_type=content_type)
+    return await get_mp_articles_source(request=request,feed_id=feed_id, tag_id=tag_id,limit=limit,offset=offset, is_update=is_update,ext=ext,kw=kw,content_type=content_type, tenant_id=tenant_id)
 
 

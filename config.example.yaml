@@ -3,11 +3,11 @@ server:
    #服务名称
    name: ${SERVER_NAME:-wemark-rss}
    #前端显示名称
-   web_name: ${WEB_NAME:-WeRSS微信公众号订阅助手}
+   web_name: ${WEB_NAME:-WemarkRSS微信公众号订阅助手}
    #过期是否发送授权二维码通知 默认False，设为True时通知中附带二维码
    send_code: ${SEND_CODE:-False}
    #二维通知标题
-   code_title: ${CODE_TITLE:-WeRSS}
+   code_title: ${CODE_TITLE:-WemarkRSS}
    #启动JOB定时任务，默认为True
    enable_job: ${ENABLE_JOB:-True}
    #代码修改自动重启服务，默认为False
@@ -15,13 +15,38 @@ server:
    #最大线程数 默认2个线程，不建议超过4个线程
    threads: ${THREADS:-1}
    #通过web方式授权二维码 默认False 
-   auth_web: ${WERSS_AUTH_WEB:-False}
+   auth_web: ${WEMARKRSS_AUTH_WEB:-False}
    #是否发送授权二维码通知 默认False，设为True时通知中附带二维码
-   send_code: ${WERSS_SEND_CODE:-False}
+   send_code: ${WEMARKRSS_SEND_CODE:-False}
    #是否启用自动刷新文章统计 默认False
    article_stats_refresh_enabled: ${ARTICLE_STATS_REFRESH_ENABLED:-False}
    # 文章统计刷新间隔 默认300秒
    article_stats_refresh_interval: ${ARTICLE_STATS_REFRESH_INTERVAL:-3600}
+
+# 部署形态(改动036 混合架构)：
+#   agent : 本地代理（默认），包含微信授权/抓取/管理 UI，运行在客户住宅 IP
+#   cloud : 阿里云纯 RSS 服务端，不导入任何微信驱动代码，只接收 Agent 上传并输出 RSS
+deploy:
+  role: ${DEPLOY_ROLE:-agent}
+
+# 混合架构(改动036) 阶段2：本地 Agent 把抓取到的 Feed/文章上传到云端 RSS 服务端
+# 仅在 deploy.role=agent 且本段 enabled=true 时生效；云端不读取此段。
+upload:
+  # 是否启用上传（默认关闭，保持纯本地行为不变）
+  enabled: ${UPLOAD_ENABLED:-False}
+  # 云端服务地址，例如 https://rss.your-domain.com
+  server: ${UPLOAD_SERVER:-https://your-cloud.example.com}
+  # 云端为该 Agent 分配的 AccessKey / SecretKey（复用现有 AK-SK 鉴权）
+  ak: ${UPLOAD_AK:-}
+  sk: ${UPLOAD_SK:-}
+  # 单次 HTTP 上传的文章批大小
+  batch_size: ${UPLOAD_BATCH_SIZE:-50}
+  # 周期性 catch-up 同步间隔（秒），同时作为即时推送的唤醒兜底
+  interval: ${UPLOAD_INTERVAL:-300}
+  # 单次请求超时（秒）
+  timeout: ${UPLOAD_TIMEOUT:-30}
+  # 上传失败重试次数
+  max_retries: ${UPLOAD_MAX_RETRIES:-3}
 
 #数据库连接 例如db:  mysql+pymysql://<username>:<password>@<host>/we-rss?charset=utf8mb4
 #PostgreSQL 连接示例: postgresql://<username>:<password>@<host>/<database>
