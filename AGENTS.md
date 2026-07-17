@@ -1,5 +1,8 @@
 # Repository Guidelines
 
+## General Rules
+- Keep documentation references valid: remove any reference to a file, config, or link that no longer exists. Apply this rule proactively — stale/invalid references should be deleted, not left behind.
+
 ## Project Structure & Module Organization
 `main.py` starts the FastAPI server defined in `web.py`. Core backend logic lives in `core/`, HTTP endpoints in `apis/`, page handlers in `views/`, scheduled jobs in `jobs/`, and WeChat/browser drivers in `driver/`. Frontend source is in `web_ui/src/`; built assets are served from `static/`. HTML templates for the legacy views live in `public/templates/`. Docker and deployment files are under `compose/` and `Dockerfiles/`. Keep new docs in `docs/` and utility scripts in `tools/` or `script/`.
 
@@ -17,4 +20,4 @@ Recent history includes `feat:` commits alongside ad-hoc messages like `1.4.9-Fi
 This clone should keep `origin` pointed at your fork and `upstream` pointed at `https://github.com/wemark-rss/wemark-rss`. Before pushing or opening a PR, fetch upstream and merge the latest `upstream/main` into your working branch if it has advanced.
 
 ## Security & Configuration Tips
-Do not commit `config.yaml`, `/.env`, tokens, cookies, or data from `data/`. Start from `config.example.yaml` and `/.env.example`, then keep real secrets in local-only config. For deployment environments where WeChat blocks datacenter IPs, prefer the compose `singbox` sidecar and a single `PROXY_URL=` entry in `/.env` instead of modifying host proxy settings or duplicating proxy fields across files. Review `SECURITY.md` before changing auth, webhooks, or access-key flows.
+Do not commit `config.yaml`, `/.env`, tokens, cookies, or data from `data/`. Start from `config.example.yaml` and `/.env.example`, then keep real secrets in local-only config. For deployment environments where WeChat blocks datacenter IPs, prefer the compose `singbox` sidecar and a single `PROXY_URL=` entry in `/.env` instead of modifying host proxy settings or duplicating proxy fields across files.
