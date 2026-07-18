@@ -112,9 +112,10 @@ api_router.include_router(env_exception_router)
 api_router.include_router(filter_rule_router)
 api_router.include_router(task_queue_router)
 api_router.include_router(proxy_router)
-api_router.include_router(agent_router)
-if not CLOUD:
+    api_router.include_router(agent_router)
+    # 认证路由（登录/Token/AK 管理）云端也必须注册，仅微信扫码类接口在云端不可用
     api_router.include_router(auth_router)
+if not CLOUD:
     api_router.include_router(article_router)
     api_router.include_router(wx_router)
     api_router.include_router(sys_info_router)

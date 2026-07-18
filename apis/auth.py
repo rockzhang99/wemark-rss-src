@@ -19,15 +19,11 @@ from core.auth import (
 )
 from .ver import API_VERSION
 from .base import success_response, error_response
-from driver.base import WX_API
 from core.config import set_config, cfg
 from pydantic import BaseModel
 from typing import Optional
 
 router = APIRouter(prefix=f"/auth", tags=["认证"])
-from driver.success import Success
-from driver.wx_api import get_qr_code #通过API登录
-from driver.wx import WX_API
 def ApiSuccess(data):
     if data != None:
             print("\n登录结果:")
@@ -38,20 +34,25 @@ def ApiSuccess(data):
             print("\n登录失败，请检查上述错误信息")
 @router.get("/qr/code", summary="获取登录二维码")
 async def get_qrcode(current_user=Depends(get_current_user)):
+    from driver.wx import WX_API
+    from driver.success import Success
     # 绑定当前用户，扫码成功后授权归属该用户（每用户各自授权）
     WX_API._auth_user = current_user.get("username")
     code_url=WX_API.GetCode(Success)
     return success_response(code_url)
 @router.get("/qr/image", summary="获取登录二维码图片")
 async def qr_image(current_user=Depends(get_current_user)):
+    from driver.wx import WX_API
     return success_response(WX_API.GetHasCode())
 
 @router.get("/qr/status",summary="获取扫描状态")
 async def qr_status(current_user=Depends(get_current_user)):
+    from driver.wx import WX_API
     #  from driver.success import  getStatus
      return success_response(WX_API.QrStatus())    
 @router.get("/qr/over",summary="扫码完成")
 async def qr_success(current_user=Depends(get_current_user)):
+     from driver.wx import WX_API
      result = success_response(await WX_API.Close())
      # 清除授权用户上下文，避免影响后续扫码
      WX_API._auth_user = None
