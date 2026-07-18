@@ -49,14 +49,14 @@ async def qr_image(current_user=Depends(get_current_user)):
 async def qr_status(current_user=Depends(get_current_user)):
     from driver.wx import WX_API
     #  from driver.success import  getStatus
-     return success_response(WX_API.QrStatus())    
+    return success_response(WX_API.QrStatus())    
 @router.get("/qr/over",summary="扫码完成")
 async def qr_success(current_user=Depends(get_current_user)):
-     from driver.wx import WX_API
-     result = success_response(await WX_API.Close())
-     # 清除授权用户上下文，避免影响后续扫码
-     WX_API._auth_user = None
-     return result
+    from driver.wx import WX_API
+    result = success_response(await WX_API.Close())
+    # 清除授权用户上下文，避免影响后续扫码
+    WX_API._auth_user = None
+    return result
 
 
 @router.get("/wx/status", summary="获取当前用户微信授权状态")
