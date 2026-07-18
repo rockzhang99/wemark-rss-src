@@ -37,10 +37,11 @@ from apis.filter_rule import router as filter_rule_router
 from apis.task_queue import router as task_queue_router
 from apis.proxy import router as proxy_router
 from apis.agent import router as agent_router
+# 认证路由已解耦 driver（微信扫码接口内惰性导入），云端也需导入用于登录/AK 管理
+from apis.auth import router as auth_router
 
 # 仅本地 Agent 模式需要的微信相关路由/视图（云端排除，避免 import driver）
 if not CLOUD:
-    from apis.auth import router as auth_router
     from apis.article import router as article_router
     from apis.mps import router as wx_router
     from apis.sys_info import router as sys_info_router
