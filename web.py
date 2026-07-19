@@ -177,9 +177,12 @@ if not CLOUD:
     app.include_router(feeds_router)
     app.include_router(views_router)
 
-# 公开首页（无需认证，游客可访问）——云端和本地均注册
-# home_view_router 为 None 时表示加载失败（如云端裁剪掉 views），跳过即可，不影响其他功能
-if home_view_router is not None:
+# 公开首页（无需认证，游客可访问）。
+# 注意：views/home 依赖 driver.wxarticle（云端 cloud_strip 已删除 driver），
+# 云端访问会抛 ImportError → 500。因此云端不注册该路由，
+# /views/home 会回退到 SPA 入口（serve_vue_app），避免 500。
+# home_view_router 为 None 时（加载失败）同样跳过。
+if home_view_router is not None and not CLOUD:
     app.include_router(home_view_router)
 
 # 静态文件服务配置
