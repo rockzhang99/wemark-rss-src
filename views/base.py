@@ -5,7 +5,8 @@ from fastapi.responses import HTMLResponse
 from core.db import DB
 from core.models.feed import Feed
 from core.models.article import Article
-from driver.wxarticle import Web
+# driver.wxarticle 仅在本地 Agent 模式下可用（云端 cloud_strip 已删除 driver），
+# 改为惰性导入，使 views/base 的工具函数在云端也能被 home 页面复用。
 from datetime import datetime
 from core.models.tags import Tags
 import json
@@ -14,6 +15,7 @@ def get_mps_view(
     page: int ,
     limit: int 
 ): 
+    from driver.wxarticle import Web
     session = DB.get_session()
     data={}
     try:
@@ -83,9 +85,8 @@ def get_tags_view(
     page: int ,
     limit: int 
 ):
-    """
-    显示所有标签，支持分页
-    """
+    """显示所有标签，支持分页"""
+    from driver.wxarticle import Web
     session = DB.get_session()
     data={}
     try:
@@ -178,6 +179,7 @@ def _render_template_with_error(template_path: str, error_msg: str, breadcrumb: 
 
 def process_content_images(content: str) -> str:
     """处理文章内容中的图片链接，添加前缀"""
+    from driver.wxarticle import Web
     if not content:
         return content
     return Web.proxy_images(content,isProxy=False)

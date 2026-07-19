@@ -22,23 +22,26 @@ from core.config import cfg,VERSION,API_BASE
 # 从物理上保证云端进程永远不会调用微信接口（数据中心 IP 安全）。
 CLOUD = cfg.get("deploy.role", "agent") == "cloud"
 
-# 与微信无关、云端/本地都需要的路由
+# 与微信无关、云端/本地都需要的路由（核心管理功能）
 from apis.user import router as user_router
 from apis.res import router as res_router
-from apis.rss import router as rss_router,feed_router
+from apis.agent import router as agent_router
+# 认证路由已解耦 driver（微信扫码接口内惰性导入），云端也需导入用于登录/AK 管理
+from apis.auth import router as auth_router
+# 云端保留的管理路由：异常统计、配置信息
+from apis.env_exception import router as env_exception_router
 from apis.config_management import router as config_router
+
+# 仅本地 Agent 模式需要的路由（RSS/订阅/标签/工具/任务/级联/过滤/代理等，云端不需要）
+from apis.rss import router as rss_router, feed_router
 from apis.message_task import router as task_router
 from apis.tags import router as tags_router
 from apis.tools import router as tools_router
 from apis.github_update import router as github_router
 from apis.cascade import router as cascade_router
-from apis.env_exception import router as env_exception_router
 from apis.filter_rule import router as filter_rule_router
 from apis.task_queue import router as task_queue_router
 from apis.proxy import router as proxy_router
-from apis.agent import router as agent_router
-# 认证路由已解耦 driver（微信扫码接口内惰性导入），云端也需导入用于登录/AK 管理
-from apis.auth import router as auth_router
 
 # 仅本地 Agent 模式需要的微信相关路由/视图（云端排除，避免 import driver）
 if not CLOUD:
@@ -47,6 +50,18 @@ if not CLOUD:
     from apis.sys_info import router as sys_info_router
     from apis.export import router as export_router
     from views import router as views_router
+
+# 云端公开首页（无需认证，游客可访问）
+# 直接加载 views/home.py 模块文件，绕过 views/__init__.py（它会 import articles/tags/mps 等依赖 driver 的子模块）。
+# views/home 的依赖 views.base 已解耦 driver（惰性导入），云端安全。
+import importlib.util, os
+from fastapi import APIRouter
+_home_spec = importlib.util.spec_from_file_location("views.home", os.path.join(os.path.dirname(__file__), "views", "home.py"))
+_home_mod = importlib.util.module_from_spec(_home_spec)
+_home_spec.loader.exec_module(_home_mod)
+# 用 /views 前缀包装，保持与本地模式一致的 URL 路径 /views/home
+home_view_router = APIRouter(prefix="/views")
+home_view_router.include_router(_home_mod.router)
 from starlette.middleware.base import BaseHTTPMiddleware
 
 class AKMiddleware(BaseHTTPMiddleware):
@@ -102,21 +117,27 @@ async def add_custom_header(request: Request, call_next):
     return response
 # 创建API路由分组
 api_router = APIRouter(prefix=f"{API_BASE}")
+
+# ===== 云端核心路由（始终注册）=====
+# 用户管理、配置信息、异常统计、Agent 上传接口、认证/AK 管理
 api_router.include_router(user_router)
 api_router.include_router(config_router)
-api_router.include_router(task_router)
-api_router.include_router(tags_router)
-api_router.include_router(tools_router)
-api_router.include_router(github_router)
-api_router.include_router(cascade_router)
 api_router.include_router(env_exception_router)
-api_router.include_router(filter_rule_router)
-api_router.include_router(task_queue_router)
-api_router.include_router(proxy_router)
 api_router.include_router(agent_router)
-# 认证路由（登录/Token/AK 管理）云端也必须注册，仅微信扫码类接口在云端不可用
 api_router.include_router(auth_router)
+
+# ===== 仅本地 Agent 模式的路由（云端排除）=====
 if not CLOUD:
+    # RSS/订阅/标签/工具/任务/级联/过滤/代理等 Agent 本地功能
+    api_router.include_router(task_router)
+    api_router.include_router(tags_router)
+    api_router.include_router(tools_router)
+    api_router.include_router(github_router)
+    api_router.include_router(cascade_router)
+    api_router.include_router(filter_rule_router)
+    api_router.include_router(task_queue_router)
+    api_router.include_router(proxy_router)
+    # 微信驱动相关路由
     api_router.include_router(article_router)
     api_router.include_router(wx_router)
     api_router.include_router(sys_info_router)
@@ -124,15 +145,22 @@ if not CLOUD:
 
 resource_router = APIRouter(prefix="/static")
 resource_router.include_router(res_router)
-feeds_router = APIRouter()
-feeds_router.include_router(rss_router)
-feeds_router.include_router(feed_router)
-# 注册API路由分组
+
+# RSS/Feed 路由仅 Agent 本地模式注册
+if not CLOUD:
+    feeds_router = APIRouter()
+    feeds_router.include_router(rss_router)
+    feeds_router.include_router(feed_router)
+
+# 注册路由分组
 app.include_router(api_router)
 app.include_router(resource_router)
-app.include_router(feeds_router)
 if not CLOUD:
+    app.include_router(feeds_router)
     app.include_router(views_router)
+
+# 公开首页（无需认证，游客可访问）——云端和本地均注册
+app.include_router(home_view_router)
 
 # 静态文件服务配置
 app.mount("/assets", StaticFiles(directory="static/assets"), name="assets")
