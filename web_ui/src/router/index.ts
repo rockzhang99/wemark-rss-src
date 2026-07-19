@@ -298,6 +298,12 @@ router.beforeEach(async (to, from, next) => {
     })
   }
 
+  // 云端模式：首页 / 重定向到 /access-keys（避免加载 ArticleList 发起本地功能请求）
+  // 后端已在 index.html 注入 window.__DEPLOY_ROLE__
+  if (to.path === '/' && typeof window !== 'undefined' && (window as any).__DEPLOY_ROLE__ === 'cloud') {
+    return next({ path: '/access-keys' })
+  }
+
   // 确保已加载当前用户权限（刷新页面后 store 为空时需先拉取）
   const { state, load, hasPermission } = useUserStore()
   if (!state.loaded) {

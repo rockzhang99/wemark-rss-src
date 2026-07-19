@@ -1,0 +1,1 @@
+import{on as e,sn as t}from"./vendor-libs-DTMdHWdp.js";export{e as conf,t as language};
