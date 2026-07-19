@@ -1,1 +1,0 @@
-'r:``,role:``,is_active:!0,permissions:[],loaded:!1}),tu=w((typeof globalThis<`u`?globalThis:window).__DEPLOY_ROLE__||`agent`);function nu(){return{state:eu,load:async()=>{let e=await $l();eu.username=e?.username||``,eu.nickname=e?.nickname||``,eu.email=e?.email||``,eu.avatar=e?.avatar||``,eu.role=e?'

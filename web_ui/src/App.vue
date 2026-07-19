@@ -6,7 +6,7 @@
         <div class="logo">
           <img :src="logo" alt="avatar" :width="60" style="margin-right:1rem;">
           <router-link to="/">{{ appTitle }}</router-link>
-          <a-tooltip v-if="hasLogined && canManageWechatAuth" :content="!haswxLogined ? '未授权，请扫码登录' : '点我扫码授权'" position="bottom" :default-popup="!haswxLogined">
+          <a-tooltip v-if="hasLogined && canManageWechatAuth && deployRole !== 'cloud'" :content="!haswxLogined ? '未授权，请扫码登录' : '点我扫码授权'" position="bottom" :default-popup="!haswxLogined">
             <icon-scan @click="showAuthQrcode()" :style="{ marginLeft: '10px', cursor: 'pointer', color: !haswxLogined ? '#f00' : '#000' }"/>
           </a-tooltip>
         </div>
@@ -26,7 +26,7 @@
             <span class="username">{{ userInfo.username }}</span>
           </div>
           <template #content>
-            <a-doption v-if="haswxLogined && wxLoginInfo?.ext_data" @click="showWxAccountInfo">
+            <a-doption v-if="haswxLogined && wxLoginInfo?.ext_data && deployRole !== 'cloud'" @click="showWxAccountInfo">
               <template #icon><icon-wechat /></template>
               公众号信息
             </a-doption>
@@ -38,7 +38,7 @@
               <template #icon><icon-lock /></template>
               修改密码
             </a-doption>
-            <a-doption @click="showAuthQrcode" v-if="canManageWechatAuth">
+            <a-doption @click="showAuthQrcode" v-if="canManageWechatAuth && deployRole !== 'cloud'">
               <template #icon><icon-scan /></template>
               扫码授权
             </a-doption>
@@ -85,7 +85,7 @@
             <a-empty description="暂无公众号信息" />
           </div>
         </a-modal>
-        <WechatAuthQrcode ref="qrcodeRef" @success="handleQrAuthSuccess" />
+        <WechatAuthQrcode v-if="deployRole !== 'cloud'" ref="qrcodeRef" @success="handleQrAuthSuccess" />
       </div>
     </a-layout-header>
 
@@ -102,7 +102,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref,watchEffect, computed, onMounted, watch, provide } from 'vue'
+import { ref,watchEffect, computed, onMounted, watch, provide, inject } from 'vue'
 import { Modal } from '@arco-design/web-vue/es/modal'
 import {getSysInfo} from '@/api/sysInfo'
 import { 
@@ -125,6 +125,8 @@ const handleQrAuthSuccess = () => {
   Message.success('微信授权成功')
 }
 provide('showAuthQrcode', showAuthQrcode)
+// 部署模式由 main.ts（入口）通过 provide 注入，云端模式无微信系统信息接口，跳过相关请求
+const deployRole = inject('deployRole', 'agent')
 const appTitle = computed(() => import.meta.env.VITE_APP_TITLE || '微信公众号订阅助手')
 // 授权管理入口（顶栏扫码图标、下拉"扫码授权"）仅超级管理员可见
 const { hasPermission } = useUserStore()
@@ -208,7 +210,10 @@ onMounted(() => {
     fetchUserInfo()
   }
   initBrowserNotification()
-  fetchSysInfo();
+  // 云端模式后端未注册 /wx/sys/info 路由（微信相关功能仅在 agent 模式提供），跳过避免 404 报错
+  if (deployRole !== 'cloud') {
+    fetchSysInfo();
+  }
 })
 
 watch(

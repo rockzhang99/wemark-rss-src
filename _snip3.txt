@@ -1,1 +1,0 @@
-'(){let e=D(J);e.use(O),e.use(k),e.use(x);let t=`agent`;try{let e=await fetch(`/api/v1/wx/deploy-info`,{credentials:`same-origin`});e.ok&&(t=(await e.json())?.role||`agent`)}catch{t=`agent`}e.provide(`deployRole`,t),e.mount(`#app`)}Y();'
