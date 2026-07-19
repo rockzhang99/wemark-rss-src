@@ -1,7 +1,6 @@
 import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
-import { getDeployInfo } from '@/api/sysInfo'
 
 // 导入 ArcoDesign
 import ArcoVue from '@arco-design/web-vue'
@@ -14,20 +13,25 @@ import './style.css'
 
 async function bootstrap() {
   const app = createApp(App)
-  // 注册 ArcoDesign
   app.use(ArcoVue)
-  // 注册图标组件
   app.use(ArcoVueIcon)
-  // 注册路由
   app.use(router)
 
   // 在入口（main.ts，不会被 tree-shake / code-split）获取部署模式，
   // 通过 provide 传递给所有组件（Navbar 用 inject 读取以过滤菜单）。
-  // 这样不依赖被 Vite 拆分到懒加载 chunk 的 Navbar 内部逻辑。
+  //
+  // 注意：必须用原生 fetch 而非 axios/http 实例调用 deploy-info 接口。
+  // 原因：http.ts 响应拦截器要求返回体包含 code==0 才 resolve，
+  // 否则当错误 reject。而后端 /wx/deploy-info 返回裸 JSON {role:"cloud"}
+  // 无 code 字段，会被拦截器 reject → fallback 到 'agent' → 菜单不过滤。
   let deployRole = 'agent'
   try {
-    const res = await getDeployInfo()
-    deployRole = res?.role || 'agent'
+    const base = import.meta.env.VITE_API_BASE_URL || ''
+    const res = await fetch(`${base}api/v1/wx/deploy-info`, { credentials: 'same-origin' })
+    if (res.ok) {
+      const json = await res.json()
+      deployRole = json?.role || 'agent'
+    }
   } catch {
     deployRole = 'agent'
   }
