@@ -1,0 +1,1 @@
+import{h as e}from"./sysInfo-COyE0nWb.js";export{e as getArticles};

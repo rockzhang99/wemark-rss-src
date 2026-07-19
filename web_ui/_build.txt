@@ -1,0 +1,7 @@
+cwd: D:\4Project\wemark-rss-src\web_ui
+node_modules exists: True
+EXCEPTION: Traceback (most recent call last):
+  File "D:\4Project\wemark-rss-src\_build.py", line 15, in <module>
+    out = proc.stdout + "\n=== STDERR ===\n" + proc.stderr
+          ~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~
+TypeError: unsupported operand type(s) for +: 'NoneType' and 'str'
