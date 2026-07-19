@@ -828,7 +828,7 @@ const fetchArticles = async () => {
       params.status = 'deleted'
     }
 
-    console.log('请求参数:', params)
+    // console.log('请求参数:', params)
 
     const res = await getArticles(params)
 
@@ -863,13 +863,13 @@ watch(issourceUrl, (newValue) => {
   localStorage.setItem('issourceUrl', newValue.toString())
 }, { immediate: false })
 const handlePageChange = (page: number) => {
-  console.log('分页事件触发:', { page })
+  // console.log('分页事件触发:', { page })
   pagination.value.current = page
   fetchArticles()
 }
 
 const handlePageSizeChange = (pageSize: number) => {
-  console.log('页面大小改变:', { pageSize })
+  // console.log('页面大小改变:', { pageSize })
   pagination.value.pageSize = pageSize
   pagination.value.current = 1 // 切换页面大小时重置到第一页
   fetchArticles()
@@ -1005,10 +1005,10 @@ const handleCleanOldArticlesPreview = async () => {
       ...res,
       days: cleanOldArticlesForm.value.days // 确保days字段有值
     }
-    console.log('预览结果:', res)
+    // console.log('预览结果:', res)
     cleanOldArticlesPreviewVisible.value = true
   } catch (error) {
-    console.error('预览失败:', error)
+    // console.error('预览失败:', error)
     Message.error(String(error || '预览失败'))
   } finally {
     cleanOldArticlesLoading.value = false

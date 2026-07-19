@@ -1,1 +1,0 @@
-import{Or as e,kr as t}from"./vendor-libs-DTMdHWdp.js";export{e as conf,t as language};

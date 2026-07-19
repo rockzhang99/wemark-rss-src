@@ -59,7 +59,7 @@ const mqtt = require('mqtt');
 const client = mqtt.connect('mqtt://localhost:1883');
 
 client.on('connect', () => {
-    console.log('连接成功');
+    // console.log('连接成功');
     
     // 订阅主题
     client.subscribe('test/topic');
@@ -69,7 +69,7 @@ client.on('connect', () => {
 });
 
 client.on('message', (topic, message) => {
-    console.log(`收到消息: ${topic} - ${message.toString()}`);
+    // console.log(`收到消息: ${topic} - ${message.toString()}`);
 });
 ```
 

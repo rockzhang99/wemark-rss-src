@@ -306,11 +306,11 @@ const connectWebSocket = () => {
 
   try {
     const wsUrl = getWsUrl()
-    console.log('[WebSocket] 连接中...', wsUrl)
+    // console.log('[WebSocket] 连接中...', wsUrl)
     ws = new WebSocket(wsUrl)
 
     ws.onopen = () => {
-      console.log('[WebSocket] 连接成功')
+      // console.log('[WebSocket] 连接成功')
       wsConnected.value = true
       if (reconnectTimer) {
         clearInterval(reconnectTimer)
@@ -322,7 +322,7 @@ const connectWebSocket = () => {
       try {
         const message = JSON.parse(event.data)
         if (message.type === 'queue_status' && message.data) {
-          console.log('[WebSocket] 收到状态更新')
+          // console.log('[WebSocket] 收到状态更新')
           // 更新队列状态
           if (message.data.main_queue) {
             mainQueueStatus.value = message.data.main_queue
@@ -339,7 +339,7 @@ const connectWebSocket = () => {
     }
 
     ws.onclose = (event) => {
-      console.log('[WebSocket] 连接关闭', event.code, event.reason)
+      // console.log('[WebSocket] 连接关闭', event.code, event.reason)
       wsConnected.value = false
       if (!reconnectTimer) {
         reconnectTimer = window.setInterval(() => {

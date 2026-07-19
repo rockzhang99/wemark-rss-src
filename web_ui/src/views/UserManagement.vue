@@ -16,7 +16,7 @@ import { IconPlus, IconEdit, IconDelete } from '@arco-design/web-vue/es/icon'
 const checkPermission = async () => {
   try {
     const userInfo = await getUserInfo()
-    console.log('当前用户信息:', userInfo)
+    // console.log('当前用户信息:', userInfo)
     if (userInfo && userInfo.role !== 'admin') {
       Message.error('您没有管理员权限，无法访问用户管理页面')
     }

@@ -505,7 +505,7 @@ class AntiCrawlerConfig:
             if (mousePositions.length > 100) mousePositions.shift();
         });
 
-        console.log('[反检测] 增强版用户特征保护已启用');
+        //console.log('[反检测] 增强版用户特征保护已启用');
         """
     
     @staticmethod

@@ -192,7 +192,7 @@ const handleDispatchTask = async () => {
         Message.success(`成功创建 ${allocations_created} 个待认领任务，子节点可以主动认领执行`)
       }
       
-      console.log('调度结果:', res)
+      // console.log('调度结果:', res)
     }
     
     fetchAllocations()

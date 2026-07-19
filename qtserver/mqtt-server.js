@@ -15,9 +15,9 @@ class MQTTServer {
         // 创建WebSocket服务器（用于浏览器客户端）
         this.createWebSocketServer();
         
-        console.log(`MQTT服务器启动成功:`);
-        console.log(`- MQTT端口: ${this.port}`);
-        console.log(`- WebSocket端口: ${this.wsPort}`);
+        // console.log(`MQTT服务器启动成功:`);
+        // console.log(`- MQTT端口: ${this.port}`);
+        // console.log(`- WebSocket端口: ${this.wsPort}`);
     }
     
     createMQTTServer() {
@@ -35,14 +35,14 @@ class MQTTServer {
         
         // 监听客户端断开事件
         this.aedes.on('clientDisconnect', (client) => {
-            console.log(`客户端断开连接: ${client.id}`);
+            // console.log(`客户端断开连接: ${client.id}`);
             this.clients.delete(client.id);
         });
         
         // 监听发布消息事件
         this.aedes.on('publish', (packet, client) => {
             if (client) {
-                console.log(`收到消息: ${packet.topic} - ${packet.payload.toString()}`);
+                // console.log(`收到消息: ${packet.topic} - ${packet.payload.toString()}`);
                 
                 // 存储消息到对应主题
                 if (!this.topics.has(packet.topic)) {
@@ -76,17 +76,17 @@ class MQTTServer {
         // 监听取消订阅事件
         this.aedes.on('unsubscribe', (unsubscriptions, client) => {
             if (client) {
-                console.log(`客户端 ${client.id} 取消订阅: ${unsubscriptions.join(', ')}`);
+                // console.log(`客户端 ${client.id} 取消订阅: ${unsubscriptions.join(', ')}`);
             }
         });
         
         // 监听错误事件
         this.aedes.on('clientError', (client, error) => {
-            console.error(`客户端 ${client.id} 错误:`, error);
+            // console.error(`客户端 ${client.id} 错误:`, error);
         });
         
         this.server.listen(this.port, () => {
-            console.log(`MQTT服务器监听端口 ${this.port}`);
+            // console.log(`MQTT服务器监听端口 ${this.port}`);
         });
     }
     
@@ -120,7 +120,7 @@ class MQTTServer {
             });
             
             ws.on('close', () => {
-                console.log(`WebSocket客户端断开连接: ${clientId}`);
+                // console.log(`WebSocket客户端断开连接: ${clientId}`);
                 // 清理订阅
                 ws.subscriptions.clear();
             });
@@ -130,7 +130,7 @@ class MQTTServer {
             });
         });
         
-        console.log(`WebSocket MQTT服务器监听端口 ${this.wsPort}`);
+        // console.log(`WebSocket MQTT服务器监听端口 ${this.wsPort}`);
     }
     
     handleWebSocketMessage(ws, data) {
@@ -166,7 +166,7 @@ class MQTTServer {
             case 'unsubscribe':
                 if (data.topic && ws.subscriptions.has(data.topic)) {
                     ws.subscriptions.delete(data.topic);
-                    console.log(`WebSocket客户端 ${ws.clientId} 取消订阅: ${data.topic}`);
+                    // console.log(`WebSocket客户端 ${ws.clientId} 取消订阅: ${data.topic}`);
                     
                     ws.send(JSON.stringify({
                         type: 'unsuback',
@@ -178,7 +178,7 @@ class MQTTServer {
                 
             case 'publish':
                 if (data.topic && data.payload) {
-                    console.log(`WebSocket客户端 ${ws.clientId} 发布消息: ${data.topic} - ${data.payload}`);
+                    // console.log(`WebSocket客户端 ${ws.clientId} 发布消息: ${data.topic} - ${data.payload}`);
                     
                     // 存储消息
                     if (!this.topics.has(data.topic)) {
@@ -256,7 +256,7 @@ class MQTTServer {
         this.server.close();
         this.aedes.close();
         this.wsServer.close();
-        console.log('MQTT服务器已关闭');
+        // console.log('MQTT服务器已关闭');
     }
 }
 
@@ -268,13 +268,13 @@ const mqttServer = new MQTTServer({
 
 // 处理进程退出
 process.on('SIGINT', () => {
-    console.log('收到SIGINT信号，正在关闭服务器...');
+    // console.log('收到SIGINT信号，正在关闭服务器...');
     mqttServer.close();
     process.exit(0);
 });
 
 process.on('SIGTERM', () => {
-    console.log('收到SIGTERM信号，正在关闭服务器...');
+    // console.log('收到SIGTERM信号，正在关闭服务器...');
     mqttServer.close();
     process.exit(0);
 });

@@ -36,7 +36,7 @@ export default defineConfig(({ command, mode }) => {
           manualChunks(id) {
             const n = id.replace(/\\/g, '/')
             if (n.includes('Layout') || n.includes('store/user')) {
-              console.log('[manualChunks] MATCH:', n)
+              // console.log('[manualChunks] MATCH:', n)
               return 'layout-vendor'
             }
             if (n.includes('node_modules')) {

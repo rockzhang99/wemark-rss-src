@@ -398,4 +398,4 @@ window.antiDetectionBypass = antiDetectionBypass;
 window.advancedBehaviorSimulator = advancedBehaviorSimulator;
 window.realTimeDetectionBypass = realTimeDetectionBypass;
 
-console.log('高级反人机检测系统已启动');
+// console.log('高级反人机检测系统已启动');

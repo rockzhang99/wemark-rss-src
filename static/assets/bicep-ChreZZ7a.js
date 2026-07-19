@@ -1,1 +1,0 @@
-import{Oi as e,ki as t}from"./vendor-libs-DTMdHWdp.js";export{e as conf,t as language};

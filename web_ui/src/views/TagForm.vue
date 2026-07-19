@@ -63,10 +63,10 @@ const handleUploadChange = async (options: any) => {
 
   try {
     const res = await uploadFile(file)
-    console.log(res)
+    // console.log(res)
     formModel.value.cover = res.url
   } catch (error) {
-    console.error('上传错误:', error)
+    // console.error('上传错误:', error)
     Message.error(`上传失败: ${error.response?.data?.message || error.message || '服务器错误'}`)
   } 
   return false

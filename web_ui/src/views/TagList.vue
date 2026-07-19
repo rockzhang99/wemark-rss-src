@@ -38,7 +38,7 @@ const fetchTags = async (isLoadMore = false) => {
       offset: (pagination.value.current - 1) * pagination.value.pageSize,
       limit: pagination.value.pageSize
     })
-    console.log(res)
+    // console.log(res)
     if (isLoadMore) {
       tags.value = [...tags.value, ...(res.list || [])]
     } else {

@@ -107,7 +107,7 @@ const form = ref({
 
 // 监听 form.avatar 的变化
 watch(() => form.value.avatar, (newValue, oldValue) => {
-  console.log('头像地址已更新:', newValue);
+  // console.log('头像地址已更新:', newValue);
   // 这里可以添加更多处理逻辑
   avatar_url.value=Avatar(newValue)
 }, { deep: true });
@@ -163,7 +163,7 @@ const handleGetMpInfo = async () => {
   isFetching.value = true;
   try {
     const res = await getSubscriptionInfo(articleLink.value.trim()); // 确保去除空格
-    console.log('获取公众号信息:', res);
+    // console.log('获取公众号信息:', res);
     const info=res?.mp_info||false
     if (info) {
       form.value.name = info.mp_name || '';

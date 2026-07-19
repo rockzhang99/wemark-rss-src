@@ -11,16 +11,16 @@ class MQTTClientTest {
         this.wsClient = null;
         this.testResults = [];
         
-        console.log('MQTT客户端测试初始化:');
-        console.log(`- 主机: ${this.host}`);
-        console.log(`- MQTT端口: ${this.port}`);
-        console.log(`- WebSocket端口: ${this.wsPort}`);
-        console.log(`- 客户端ID: ${this.clientId}`);
+        // console.log('MQTT客户端测试初始化:');
+        // console.log(`- 主机: ${this.host}`);
+        // console.log(`- MQTT端口: ${this.port}`);
+        // console.log(`- WebSocket端口: ${this.wsPort}`);
+        // console.log(`- 客户端ID: ${this.clientId}`);
     }
     
     // 测试MQTT连接
     async testMQTTConnection() {
-        console.log('\n=== 测试MQTT连接 ===');
+        // console.log('\n=== 测试MQTT连接 ===');
         
         return new Promise((resolve, reject) => {
             try {
@@ -33,7 +33,7 @@ class MQTTClientTest {
                 });
                 
                 this.mqttClient.on('connect', () => {
-                    console.log('✅ MQTT连接成功');
+                    // console.log('✅ MQTT连接成功');
                     this.testResults.push({ type: 'mqtt_connect', success: true, message: 'MQTT连接成功' });
                     resolve(true);
                 });
@@ -45,7 +45,7 @@ class MQTTClientTest {
                 });
                 
                 this.mqttClient.on('close', () => {
-                    console.log('MQTT连接已关闭');
+                    // console.log('MQTT连接已关闭');
                 });
                 
             } catch (error) {
@@ -61,7 +61,7 @@ class MQTTClientTest {
         console.log('\n=== 测试MQTT消息收发 ===');
         
         if (!this.mqttClient || !this.mqttClient.connected) {
-            console.log('❌ 请先建立MQTT连接');
+            // console.log('❌ 请先建立MQTT连接');
             return false;
         }
         
@@ -80,7 +80,7 @@ class MQTTClientTest {
                     return;
                 }
                 
-                console.log('✅ 订阅成功:', testTopic);
+                // console.log('✅ 订阅成功:', testTopic);
                 this.testResults.push({ type: 'mqtt_subscribe', success: true, message: '订阅成功' });
                 
                 // 设置消息接收监听
@@ -97,9 +97,9 @@ class MQTTClientTest {
                         // 取消订阅
                         this.mqttClient.unsubscribe(testTopic, (unsubErr) => {
                             if (unsubErr) {
-                                console.error('取消订阅失败:', unsubErr.message);
+                                // console.error('取消订阅失败:', unsubErr.message);
                             } else {
-                                console.log('✅ 取消订阅成功');
+                                // console.log('✅ 取消订阅成功');
                             }
                             resolve(true);
                         });
@@ -114,7 +114,7 @@ class MQTTClientTest {
                             this.testResults.push({ type: 'mqtt_publish', success: false, message: `发布失败: ${pubErr.message}` });
                             resolve(false);
                         } else {
-                            console.log('✅ 发布成功:', testMessage);
+                            // console.log('✅ 发布成功:', testMessage);
                             this.testResults.push({ type: 'mqtt_publish', success: true, message: '发布成功' });
                         }
                     });
@@ -134,7 +134,7 @@ class MQTTClientTest {
     
     // 测试WebSocket MQTT连接
     async testWebSocketMQTT() {
-        console.log('\n=== 测试WebSocket MQTT连接 ===');
+        // console.log('\n=== 测试WebSocket MQTT连接 ===');
         
         return new Promise((resolve) => {
             try {
@@ -144,7 +144,7 @@ class MQTTClientTest {
                 this.wsClient = new WebSocket(wsUrl);
                 
                 this.wsClient.on('open', () => {
-                    console.log('✅ WebSocket连接成功');
+                    // console.log('✅ WebSocket连接成功');
                     this.testResults.push({ type: 'ws_connect', success: true, message: 'WebSocket连接成功' });
                     
                     // 测试WebSocket消息
@@ -158,7 +158,7 @@ class MQTTClientTest {
                 });
                 
                 this.wsClient.on('close', () => {
-                    console.log('WebSocket连接已关闭');
+                    // console.log('WebSocket连接已关闭');
                 });
                 
             } catch (error) {
@@ -191,7 +191,7 @@ class MQTTClientTest {
                     const message = JSON.parse(data);
                     
                     if (message.type === 'suback' && message.topic === testTopic) {
-                        console.log('✅ WebSocket订阅成功');
+                        // console.log('✅ WebSocket订阅成功');
                         this.testResults.push({ type: 'ws_subscribe', success: true, message: 'WebSocket订阅成功' });
                         
                         // 发布消息
@@ -201,7 +201,7 @@ class MQTTClientTest {
                                 topic: testTopic,
                                 payload: testMessage
                             }));
-                            console.log('✅ WebSocket发布成功:', testMessage);
+                            // console.log('✅ WebSocket发布成功:', testMessage);
                             this.testResults.push({ type: 'ws_publish', success: true, message: 'WebSocket发布成功' });
                         }, 100);
                         
@@ -241,7 +241,7 @@ class MQTTClientTest {
     
     // 运行所有测试
     async runAllTests() {
-        console.log('🚀 开始运行MQTT客户端测试...\n');
+        // console.log('🚀 开始运行MQTT客户端测试...\n');
         
         try {
             // 测试MQTT连接
@@ -268,31 +268,31 @@ class MQTTClientTest {
     cleanup() {
         if (this.mqttClient) {
             this.mqttClient.end();
-            console.log('\n🔌 MQTT连接已关闭');
+            // console.log('\n🔌 MQTT连接已关闭');
         }
         
         if (this.wsClient) {
             this.wsClient.close();
-            console.log('🔌 WebSocket连接已关闭');
+            // console.log('🔌 WebSocket连接已关闭');
         }
     }
     
     // 打印测试结果
     printTestResults() {
-        console.log('\n📊 === 测试结果汇总 ===');
+        // console.log('\n📊 === 测试结果汇总 ===');
         
         const totalTests = this.testResults.length;
         const passedTests = this.testResults.filter(r => r.success).length;
         const failedTests = totalTests - passedTests;
         
-        console.log(`总计测试: ${totalTests}`);
-        console.log(`通过: ${passedTests} ✅`);
-        console.log(`失败: ${failedTests} ❌`);
+        // console.log(`总计测试: ${totalTests}`);
+        // console.log(`通过: ${passedTests} ✅`);
+        // console.log(`失败: ${failedTests} ❌`);
         
         if (failedTests === 0) {
-            console.log('🎉 所有测试通过！');
+            // console.log('🎉 所有测试通过！');
         } else {
-            console.log('\n失败的测试:');
+            // console.log('\n失败的测试:');
             this.testResults.filter(r => !r.success).forEach(r => {
                 console.log(`❌ ${r.type}: ${r.message}`);
             });

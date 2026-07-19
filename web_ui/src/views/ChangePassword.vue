@@ -134,7 +134,7 @@ const handleSubmit = async () => {
       old_password: form.value.currentPassword,
       new_password: form.value.newPassword
     })
-    console.log(response)
+    // console.log(response)
     if (response.code === 0) {
       Message.success('密码修改成功')
       // 清除token强制重新登录

@@ -194,7 +194,7 @@ const runTask = async (id: number,isTest:boolean=false) => {
         } catch (error) {
           console.error(error)
           Message.error('测试失败')
-          console.log(error)
+          // console.log(error)
         }
       }
     })
@@ -211,7 +211,7 @@ const runTask = async (id: number,isTest:boolean=false) => {
         } catch (error) {
           console.error(error)
           Message.error('执行失败')
-          console.log(error)
+          // console.log(error)
         }
       }
     })

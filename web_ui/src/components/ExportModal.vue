@@ -91,7 +91,7 @@ const emit = defineEmits(['confirm']);
 const show = (mp_id: string, ids: any, mp_name?: string) => {
   visible.value = true;
   form.value.mp_id = mp_id;
-  console.log(ids);
+  // console.log(ids);
   form.value.scope = ids && ids.length > 0 ? 'selected' : 'all';
   form.value.ids = ids;
 
@@ -115,7 +115,7 @@ const handleOk = () => {
 const SubmitExport = async (params: any) => {
   try {
     const result = await exportArticles(params);
-    console.log('导出成功:', result);
+    // console.log('导出成功:', result);
     Message.success(result.message || '导出任务已启动');
     // 启动进度轮询，前端实时展示导出进度
     startPolling(params.mp_id);

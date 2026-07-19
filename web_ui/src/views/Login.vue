@@ -69,13 +69,6 @@
 
     <div class="login-footer">
       <div class="copyright">Copyright © 2025-{{ new Date().getFullYear() }} WemarkRss微信公众号订阅助手. All Rights Reserved.</div>
-      <div class="footer-links">
-        <a-link href="https://github.com/wemark-rss/wemark-rss" target="_blank">GitHub</a-link>
-        <span class="divider">|</span>
-        <a-link href="https://gitee.com/rachel_os/wemark-rss" target="_blank">Gitee</a-link>
-        <span class="divider">|</span>
-        <a-link href="/api/docs" target="_blank">Docs</a-link>
-      </div>
     </div>
   </div>
 </template>
