@@ -54,14 +54,26 @@ if not CLOUD:
 # 云端公开首页（无需认证，游客可访问）
 # 直接加载 views/home.py 模块文件，绕过 views/__init__.py（它会 import articles/tags/mps 等依赖 driver 的子模块）。
 # views/home 的依赖 views.base 已解耦 driver（惰性导入），云端安全。
-import importlib.util, os
-from fastapi import APIRouter
-_home_spec = importlib.util.spec_from_file_location("views.home", os.path.join(os.path.dirname(__file__), "views", "home.py"))
-_home_mod = importlib.util.module_from_spec(_home_spec)
-_home_spec.loader.exec_module(_home_mod)
-# 用 /views 前缀包装，保持与本地模式一致的 URL 路径 /views/home
-home_view_router = APIRouter(prefix="/views")
-home_view_router.include_router(_home_mod.router)
+# 用 try/except 容错：即使 views/home.py 因部署裁剪缺失，后端也不应崩溃重启。
+import importlib.util, os, logging
+home_view_router = None
+_home_path = os.path.join(os.path.dirname(__file__), "views", "home.py")
+if os.path.exists(_home_path):
+    try:
+        _home_spec = importlib.util.spec_from_file_location("views.home", _home_path)
+        _home_mod = importlib.util.module_from_spec(_home_spec)
+        _home_spec.loader.exec_module(_home_mod)
+        # 用 /views 前缀包装，保持与本地模式一致的 URL 路径 /views/home
+        home_view_router = APIRouter(prefix="/views")
+        home_view_router.include_router(_home_mod.router)
+    except Exception as _home_err:
+        logging.getLogger("uvicorn.error").warning(
+            "公开首页 views/home 加载失败，已跳过（不影响其他功能）：%s", _home_err
+        )
+else:
+    logging.getLogger("uvicorn.error").warning(
+        "views/home.py 不存在，公开首页未启用（云端 cloud_strip 未保留该文件时属正常）"
+    )
 from starlette.middleware.base import BaseHTTPMiddleware
 
 class AKMiddleware(BaseHTTPMiddleware):
@@ -160,7 +172,9 @@ if not CLOUD:
     app.include_router(views_router)
 
 # 公开首页（无需认证，游客可访问）——云端和本地均注册
-app.include_router(home_view_router)
+# home_view_router 为 None 时表示加载失败（如云端裁剪掉 views），跳过即可，不影响其他功能
+if home_view_router is not None:
+    app.include_router(home_view_router)
 
 # 静态文件服务配置
 app.mount("/assets", StaticFiles(directory="static/assets"), name="assets")
