@@ -1,0 +1,1 @@
+import{Gr as e,Wr as t}from"./vendor-libs-DedxzSND.js";export{t as conf,e as language};

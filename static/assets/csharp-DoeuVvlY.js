@@ -1,0 +1,1 @@
+import{vi as e,yi as t}from"./vendor-libs-DedxzSND.js";export{e as conf,t as language};

@@ -1,0 +1,1 @@
+import{Or as e,kr as t}from"./vendor-libs-DedxzSND.js";export{e as conf,t as language};

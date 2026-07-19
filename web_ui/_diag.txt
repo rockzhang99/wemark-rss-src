@@ -1,0 +1,5 @@
+_full_build.log: exists=False, size=N/A
+_build_result.txt: exists=False, size=N/A
+_build_capture.py: exists=True, size=711
+node processes: 0
+dist JS count: 104, layout-vendor: []

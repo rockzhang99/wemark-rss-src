@@ -1,0 +1,1 @@
+import{Ai as e,ji as t}from"./vendor-libs-DedxzSND.js";export{e as conf,t as language};

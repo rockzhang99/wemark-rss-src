@@ -9,7 +9,7 @@ if sys.platform == 'win32':
 from fastapi import FastAPI, Request, APIRouter, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.openapi.models import OAuthFlows as OAuthFlowsModel
 from fastapi.openapi.models import OAuthFlowPassword
@@ -195,10 +195,16 @@ async def serve_vue_app(request: Request, path: str):
     if path.startswith(('api', 'assets', 'static')) or path in ['favicon.ico','vite.svg','logo.svg']:
         return None
     
-    # 返回Vue入口文件
+    # 返回Vue入口文件，并注入部署模式全局变量（前端同步读取，避免被 Vite code-splitting 打散）
     index_path = os.path.join("static", "index.html")
     if os.path.exists(index_path):
-        return FileResponse(index_path)
+        with open(index_path, "r", encoding="utf-8") as f:
+            html_content = f.read()
+        # 在 <body> 或 <div id="app"> 前注入 window.__DEPLOY_ROLE__
+        inject_script = f'<script>window.__DEPLOY_ROLE__="{ "cloud" if CLOUD else "agent" }"</script>'
+        # 优先注入到 <div id="app"> 前（确保在 Vue mount 前执行）
+        html_content = html_content.replace('<div id="app">', f'{inject_script}\n<div id="app">')
+        return HTMLResponse(content=html_content, media_type="text/html")
     
     return {"error": "Not Found"}, 404
 

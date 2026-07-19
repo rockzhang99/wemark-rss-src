@@ -63,7 +63,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watchEffect, onMounted, onBeforeUnmount, computed } from 'vue'
+import { ref, watchEffect, onMounted, onBeforeUnmount, computed, inject } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/store/user'
 import {
@@ -112,13 +112,16 @@ const menuItems = [
 ]
 
 // 按当前用户权限 + 部署模式过滤菜单
-const { hasPermission, isCloudMode, loadDeployMode } = useUserStore()
+const { hasPermission } = useUserStore()
+// 部署模式由 main.ts（入口，不会被 tree-shake）通过 provide 注入，这里 inject 读取。
+// 用 inject 而非全局变量，避免被 Vite 当作 dead code 删除。
+const deployRole = inject('deployRole', 'agent')
 const visibleMenuItems = computed(() =>
   menuItems.filter(item => {
     // 权限检查
     if (item.permission && !hasPermission(item.permission)) return false
     // 云端模式：只显示 cloudOnly 标记的菜单项
-    if (isCloudMode()) return item.cloudOnly === true
+    if (deployRole === 'cloud') return item.cloudOnly === true
     return true
   })
 )
@@ -135,7 +138,6 @@ const handleResize = () => {
 
 onMounted(() => {
   window.addEventListener('resize', handleResize)
-  loadDeployMode()
 })
 
 onBeforeUnmount(() => {

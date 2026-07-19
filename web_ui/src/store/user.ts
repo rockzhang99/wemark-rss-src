@@ -1,6 +1,5 @@
 import { reactive, ref } from 'vue'
 import { getUserInfo } from '@/api/user'
-import { getDeployInfo } from '@/api/sysInfo'
 
 export interface UserState {
   username: string
@@ -25,9 +24,9 @@ const state = reactive<UserState>({
   loaded: false
 })
 
-// 部署模式单例状态：cloud=云端模式(只显示 AK/用户管理/配置信息), agent=本地完整功能
-const deployRole = ref<string>('agent')
-const deployLoaded = ref(false)
+// 部署模式：从后端注入的全局变量 window.__DEPLOY_ROLE__ 同步读取（避免被 Vite code-splitting 打散）
+const _raw = (typeof globalThis !== 'undefined' ? globalThis : window) as any
+const deployRole = ref<string>(_raw.__DEPLOY_ROLE__ || 'agent')
 
 export function useUserStore() {
   const load = async () => {
@@ -40,18 +39,6 @@ export function useUserStore() {
     state.is_active = res?.is_active !== false
     state.permissions = res?.permissions || []
     state.loaded = true
-  }
-
-  /** 加载部署模式，前端据此过滤菜单 */
-  const loadDeployMode = async () => {
-    try {
-      const res = await getDeployInfo()
-      deployRole.value = res?.role || 'agent'
-    } catch {
-      // 接口不可用时默认 agent 模式（显示全部菜单）
-      deployRole.value = 'agent'
-    }
-    deployLoaded.value = true
   }
 
   // 判断当前用户是否拥有所需权限（required 为空表示无需权限，所有人可见）
@@ -76,5 +63,5 @@ export function useUserStore() {
     state.loaded = false
   }
 
-  return { state, load, loadDeployMode, hasPermission, isCloudMode, clear, deployRole, deployLoaded }
+  return { state, load, hasPermission, isCloudMode, clear, deployRole }
 }
