@@ -235,9 +235,34 @@ class CloudUploader:
         if resp is not None:
             print_info(f"[UPLOADER] 上传 Feed {len(items)} 条 -> {resp.get('message')}")
 
+    @staticmethod
+    def _normalize_datetime(v):
+        """把 to_dict() 产出的时间规范化为服务端 add_article 期望的格式。
+
+        - to_dict() 的 created_at 是 ISO 字符串（如 2024-01-01T12:00:00），
+          而服务端 add_article 用 datetime.strptime(v, '%Y-%m-%d %H:%M:%S') 解析，
+          ISO 格式会抛 ValueError 被 except 吞掉 → 文章上传静默失败(added=0)。
+        - 这里统一转成 '%Y-%m-%d %H:%M:%S'；None 直接返回让服务端补默认值。
+        """
+        if v is None:
+            return None
+        if isinstance(v, str):
+            s = v.replace("T", " ", 1) if "T" in v else v
+            s = s.split("+")[0].split(".")[0]  # 去掉时区/毫秒尾巴
+            return s
+        if hasattr(v, "strftime"):
+            return v.strftime("%Y-%m-%d %H:%M:%S")
+        return v
+
     def _post_articles(self, mp_id: str, items: List[dict]):
-        # 去掉 None 字段，避免云端 add_article 因空值报错
-        clean = [{k: v for k, v in it.items() if v is not None} for it in items]
+        # 去掉 None 字段，避免云端 add_article 因空值报错；
+        # 同时把 created_at 的 ISO 时间规范化为服务端可解析的格式。
+        clean = []
+        for it in items:
+            norm = {k: v for k, v in it.items() if v is not None}
+            if "created_at" in norm:
+                norm["created_at"] = self._normalize_datetime(norm["created_at"])
+            clean.append(norm)
         if not clean:
             return
         resp = self._post("/api/v1/wx/agent/articles", {"mp_id": mp_id, "articles": clean})

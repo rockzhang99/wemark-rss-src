@@ -164,17 +164,18 @@ if not CLOUD:
 resource_router = APIRouter(prefix="/static")
 resource_router.include_router(res_router)
 
-# RSS/Feed 路由仅 Agent 本地模式注册
-if not CLOUD:
-    feeds_router = APIRouter()
-    feeds_router.include_router(rss_router)
-    feeds_router.include_router(feed_router)
+# RSS/Feed 路由：云端(对外提供订阅)与本地 Agent 都需要，故始终注册。
+# 云端鉴权由 apis/rss.py 的 _rss_tenant_dep 负责(解析 AK-SK/Bearer, 按租户过滤)；
+# 这些接口只读数据库、不触发云端抓取(云端无 driver)，在云端注册安全。
+feeds_router = APIRouter()
+feeds_router.include_router(rss_router)
+feeds_router.include_router(feed_router)
 
 # 注册路由分组
 app.include_router(api_router)
 app.include_router(resource_router)
+app.include_router(feeds_router)
 if not CLOUD:
-    app.include_router(feeds_router)
     app.include_router(views_router)
 
 # 公开首页（无需认证，游客可访问）。

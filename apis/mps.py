@@ -537,7 +537,21 @@ async def add_mp(
             ))
         
         session.commit()
-        
+
+        # 混合架构(改动036) 阶段2：新订阅/更新的公众号目录即时入队上传云端
+        try:
+            from core.uploader import uploader
+            uploader.enqueue_feed({
+                "id": feed.id,
+                "mp_name": feed.mp_name or "",
+                "mp_cover": feed.mp_cover or "",
+                "mp_intro": feed.mp_intro or "",
+                "status": feed.status or 1,
+                "faker_id": feed.faker_id or "",
+            })
+        except Exception:
+            pass
+
          #在这里实现第一次添加获取公众号文章
         if not existing_feed:
             from core.queue import TaskQueue
