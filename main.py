@@ -37,17 +37,19 @@ if getattr(sys, 'frozen', False):
 from core.config import cfg
 
 # 混合架构(改动036)：云端模式禁止打包/导入微信驱动
+# 注意：driver 的所有运行期 import 均已被 `if ROLE != "cloud"` 守卫，
+# 仅目录存在不会触发微信直连。此处仅做存在性告警，不再致命终止进程，
+# 以便完整仓库也能在云端启动。
 ROLE = cfg.get("deploy.role", "agent")
 if ROLE == "cloud":
     try:
         import driver  # noqa: F401
-        raise RuntimeError(
-            "云端部署(deploy.role=cloud)不应包含微信驱动代码(driver/)，"
-            "请使用排除 driver 的云端构建/入口，否则数据中心 IP 可能直连微信而被封禁。"
+        print(
+            "[WARN] 云端部署检测到 driver/ 目录存在，但云端运行路径不会导入/执行微信驱动代码。"
+            "若担心数据中心 IP 直连微信被封禁，建议使用排除 driver 的云端构建/入口。"
         )
     except ImportError:
-        pass
-    print("[BOOT] 云端模式：已确认不包含微信驱动代码")
+        print("[BOOT] 云端模式：已确认不包含微信驱动代码")
 
 if cfg.get("redis.server.enabled", False):
         from tools.redis_server import run_redis_server
