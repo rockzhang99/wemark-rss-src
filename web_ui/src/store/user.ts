@@ -1,5 +1,6 @@
-import { reactive } from 'vue'
+import { reactive, ref } from 'vue'
 import { getUserInfo } from '@/api/user'
+import { getDeployInfo } from '@/api/sysInfo'
 
 export interface UserState {
   username: string
@@ -24,6 +25,10 @@ const state = reactive<UserState>({
   loaded: false
 })
 
+// 部署模式单例状态：cloud=云端模式(只显示 AK/用户管理/配置信息), agent=本地完整功能
+const deployRole = ref<string>('agent')
+const deployLoaded = ref(false)
+
 export function useUserStore() {
   const load = async () => {
     const res = await getUserInfo()
@@ -37,6 +42,18 @@ export function useUserStore() {
     state.loaded = true
   }
 
+  /** 加载部署模式，前端据此过滤菜单 */
+  const loadDeployMode = async () => {
+    try {
+      const res = await getDeployInfo()
+      deployRole.value = res?.role || 'agent'
+    } catch {
+      // 接口不可用时默认 agent 模式（显示全部菜单）
+      deployRole.value = 'agent'
+    }
+    deployLoaded.value = true
+  }
+
   // 判断当前用户是否拥有所需权限（required 为空表示无需权限，所有人可见）
   const hasPermission = (required?: string | string[]): boolean => {
     if (!required) return true
@@ -44,6 +61,9 @@ export function useUserStore() {
     if (list.length === 0) return true
     return list.some(p => state.permissions.includes(p))
   }
+
+  /** 是否为云端模式 */
+  const isCloudMode = () => deployRole.value === 'cloud'
 
   const clear = () => {
     state.username = ''
@@ -56,5 +76,5 @@ export function useUserStore() {
     state.loaded = false
   }
 
-  return { state, load, hasPermission, clear }
+  return { state, load, loadDeployMode, hasPermission, isCloudMode, clear, deployRole, deployLoaded }
 }

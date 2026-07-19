@@ -130,6 +130,12 @@ async def add_custom_header(request: Request, call_next):
 # 创建API路由分组
 api_router = APIRouter(prefix=f"{API_BASE}")
 
+# 部署模式接口（前端据此过滤菜单：云端只显示 AK/用户管理/配置信息）
+@api_router.get("/deploy-info")
+def get_deploy_info():
+    """返回当前部署模式，前端据此决定显示哪些菜单项"""
+    return {"role": "cloud" if CLOUD else "agent"}
+
 # ===== 云端核心路由（始终注册）=====
 # 用户管理、配置信息、Agent 上传接口(写库)、认证/AK 管理、公开首页(展示数据库)
 api_router.include_router(user_router)

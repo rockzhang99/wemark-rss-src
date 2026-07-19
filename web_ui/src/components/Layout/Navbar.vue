@@ -102,17 +102,25 @@ const menuItems = [
   { key: '/task-queue', label: '任务队列', icon: IconList, permission: 'admin' },
   { key: '/cascade/feed-status', label: '公众号状态', icon: IconStorage, permission: 'admin' },
   { key: '/cascade', label: '级联管理', icon: IconShareExternal, permission: 'admin' },
-  { key: '/access-keys', label: 'Access Key', icon: IconLock, permission: 'admin' },
-  { key: '/users', label: '用户管理', icon: IconUser, permission: 'admin' },
+  // 以下为云端模式可见菜单（agent 模式也显示）
+  { key: '/access-keys', label: 'Access Key', icon: IconLock, permission: 'admin', cloudOnly: true },
+  { key: '/users', label: '用户管理', icon: IconUser, permission: 'admin', cloudOnly: true },
+  // 以下为 agent 本地专属菜单（云端隐藏）
   { key: '/env-exception', label: '异常统计', icon: IconExclamationCircle, permission: 'admin' },
-  { key: '/configs', label: '配置信息', icon: IconSettings, permission: 'admin' },
+  { key: '/configs', label: '配置信息', icon: IconSettings, permission: 'admin', cloudOnly: true },
   { key: '/sys-info', label: '系统信息', icon: IconInfoCircle, permission: 'admin' }
 ]
 
-// 按当前用户权限过滤菜单（无 permission 的菜单对所有登录用户可见）
-const { hasPermission } = useUserStore()
+// 按当前用户权限 + 部署模式过滤菜单
+const { hasPermission, isCloudMode, loadDeployMode } = useUserStore()
 const visibleMenuItems = computed(() =>
-  menuItems.filter(item => !item.permission || hasPermission(item.permission))
+  menuItems.filter(item => {
+    // 权限检查
+    if (item.permission && !hasPermission(item.permission)) return false
+    // 云端模式：只显示 cloudOnly 标记的菜单项
+    if (isCloudMode()) return item.cloudOnly === true
+    return true
+  })
 )
 
 watchEffect(() => {
@@ -127,6 +135,7 @@ const handleResize = () => {
 
 onMounted(() => {
   window.addEventListener('resize', handleResize)
+  loadDeployMode()
 })
 
 onBeforeUnmount(() => {

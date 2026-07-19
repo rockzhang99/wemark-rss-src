@@ -14,3 +14,9 @@ export const refreshArticleStats = async (): Promise<any> => {
   const data = await http.post('/wx/sys/article/refresh')
   return data
 }
+
+/** 获取当前部署模式（cloud / agent），前端据此过滤菜单 */
+export const getDeployInfo = async (): Promise<{ role: string }> => {
+  const data = await http.get('/wx/deploy-info')
+  return data
+}
