@@ -28,8 +28,7 @@ from apis.res import router as res_router
 from apis.agent import router as agent_router
 # 认证路由已解耦 driver（微信扫码接口内惰性导入），云端也需导入用于登录/AK 管理
 from apis.auth import router as auth_router
-# 云端保留的管理路由：异常统计、配置信息
-from apis.env_exception import router as env_exception_router
+# 云端保留的管理路由：配置信息
 from apis.config_management import router as config_router
 
 # 仅本地 Agent 模式需要的路由（RSS/订阅/标签/工具/任务/级联/过滤/代理等，云端不需要）
@@ -49,6 +48,7 @@ if not CLOUD:
     from apis.mps import router as wx_router
     from apis.sys_info import router as sys_info_router
     from apis.export import router as export_router
+    from apis.env_exception import router as env_exception_router
     from views import router as views_router
 
 # 云端公开首页（无需认证，游客可访问）
@@ -119,16 +119,15 @@ async def add_custom_header(request: Request, call_next):
 api_router = APIRouter(prefix=f"{API_BASE}")
 
 # ===== 云端核心路由（始终注册）=====
-# 用户管理、配置信息、异常统计、Agent 上传接口、认证/AK 管理
+# 用户管理、配置信息、Agent 上传接口(写库)、认证/AK 管理、公开首页(展示数据库)
 api_router.include_router(user_router)
 api_router.include_router(config_router)
-api_router.include_router(env_exception_router)
 api_router.include_router(agent_router)
 api_router.include_router(auth_router)
 
 # ===== 仅本地 Agent 模式的路由（云端排除）=====
 if not CLOUD:
-    # RSS/订阅/标签/工具/任务/级联/过滤/代理等 Agent 本地功能
+    # RSS/订阅/标签/工具/任务/级联/过滤/代理/异常统计等 Agent 本地功能
     api_router.include_router(task_router)
     api_router.include_router(tags_router)
     api_router.include_router(tools_router)
@@ -137,6 +136,7 @@ if not CLOUD:
     api_router.include_router(filter_rule_router)
     api_router.include_router(task_queue_router)
     api_router.include_router(proxy_router)
+    api_router.include_router(env_exception_router)
     # 微信驱动相关路由
     api_router.include_router(article_router)
     api_router.include_router(wx_router)
