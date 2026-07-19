@@ -1,1 +1,0 @@
-import{Gn as e,Wn as t}from"./vendor-libs-DedxzSND.js";export{t as conf,e as language};

@@ -1,0 +1,1 @@
+import{Dn as e,En as t}from"./vendor-libs-89DNxAbr.js";export{t as conf,e as language};

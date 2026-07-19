@@ -1,0 +1,1 @@
+import{hr as e,mr as t}from"./vendor-libs-89DNxAbr.js";export{t as conf,e as language};

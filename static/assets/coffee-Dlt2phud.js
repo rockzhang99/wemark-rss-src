@@ -1,1 +1,0 @@
-import{Ci as e,Si as t}from"./vendor-libs-DedxzSND.js";export{t as conf,e as language};

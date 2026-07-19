@@ -1,1 +1,0 @@
-import{Rn as e,zn as t}from"./vendor-libs-DedxzSND.js";export{e as conf,t as language};

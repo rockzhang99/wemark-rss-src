@@ -1,1 +1,0 @@
-import{an as e,in as t}from"./vendor-libs-DedxzSND.js";export{t as conf,e as language};
