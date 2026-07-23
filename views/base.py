@@ -5,17 +5,26 @@ from fastapi.responses import HTMLResponse
 from core.db import DB
 from core.models.feed import Feed
 from core.models.article import Article
-# driver.wxarticle 仅在本地 Agent 模式下可用（云端 cloud_strip 已删除 driver），
-# 改为惰性导入，使 views/base 的工具函数在云端也能被 home 页面复用。
+# 注意: 云端 cloud_strip 会删除 driver。get_mps_view/get_tags_view 原本依赖 driver.wxarticle.Web
+# 取封面图URL, 已改为云端安全的 _resolve_cover_url(改动046); 仅 process_content_images 仍惰性
+# import driver(只被本地 agent 文章详情页调用, 云端不触发)。
 from datetime import datetime
 from core.models.tags import Tags
 import json
+def _resolve_cover_url(content):
+    """云端安全版封面解析: 不依赖 driver.wxarticle(云端 cloud_strip 已删除 driver)。
+    封面字段通常是已存在的 http(s) URL, 直接返回; 否则返回空串(改动046)。"""
+    if not content:
+        return ""
+    if isinstance(content, str) and content.startswith(("http://", "https://")):
+        return content
+    return ""
+
 #获取公众号视图数据
 def get_mps_view(
     page: int ,
     limit: int 
 ): 
-    from driver.wxarticle import Web
     session = DB.get_session()
     data={}
     try:
@@ -43,7 +52,7 @@ def get_mps_view(
             feed_data = {
                 "id": feed.id,
                 "name": feed.mp_name,
-                "cover": Web.get_image_url(feed.mp_cover) if feed.mp_cover else "",
+                "cover": _resolve_cover_url(feed.mp_cover),
                 "intro": feed.mp_intro,
                 "mp_count": 1,  # Feed 本身就是一个公众号
                 "article_count": article_count,
@@ -86,7 +95,6 @@ def get_tags_view(
     limit: int 
 ):
     """显示所有标签，支持分页"""
-    from driver.wxarticle import Web
     session = DB.get_session()
     data={}
     try:
@@ -125,7 +133,7 @@ def get_tags_view(
             tag_data = {
                 "id": tag.id,
                 "name": tag.name,
-                "cover": Web.get_image_url(tag.cover) if tag.cover else "",
+                "cover": _resolve_cover_url(tag.cover),
                 "intro": tag.intro,
                 "mp_count": mp_count,
                 "article_count": article_count,

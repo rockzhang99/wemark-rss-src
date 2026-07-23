@@ -179,11 +179,11 @@ if not CLOUD:
     app.include_router(views_router)
 
 # 公开首页（无需认证，游客可访问）。
-# 注意：views/home 依赖 driver.wxarticle（云端 cloud_strip 已删除 driver），
-# 云端访问会抛 ImportError → 500。因此云端不注册该路由，
-# /views/home 会回退到 SPA 入口（serve_vue_app），避免 500。
-# home_view_router 为 None 时（加载失败）同样跳过。
-if home_view_router is not None and not CLOUD:
+# 本地 Agent：/views/home 已由上面的 views_router 注册，这里不再重复注册（避免重复路由）。
+# 云端：views_router 因依赖已删除的 driver 子模块而被排除，故单独注册解耦后的 home_view_router
+# 提供 /views/home（views/base 已用 _resolve_cover_url 替代 driver.wxarticle，云端安全，改动046）。
+# home_view_router 为 None 时（加载失败）跳过，/views/home 回退到 SPA 入口。
+if home_view_router is not None and CLOUD:
     app.include_router(home_view_router)
 
 # 静态文件服务配置
