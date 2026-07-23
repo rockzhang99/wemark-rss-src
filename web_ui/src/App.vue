@@ -12,7 +12,7 @@
         </div>
       </div>
       <div class="header-right" v-if="hasLogined">
-        <a-link v-if="deployRole !== 'cloud'" href="/views/home" target="_blank" style="margin-right: 20px;">文章视图</a-link>
+        <a-link href="/views/home" target="_blank" style="margin-right: 20px;">文章视图</a-link>
 
         <a-dropdown position="br" trigger="click">
           <div class="user-info">
