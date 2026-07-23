@@ -129,9 +129,12 @@ class Db:
                     print_info(f"[{self.tag}] {tbl} 已添加 owner 列（多用户隔离）")
 
             # 历史数据归属回填：未设置 owner 的行统一归 admin（初始管理员）
+            # 仅对确实存在的表执行, 避免 tags/message_tasks 尚未建表时刷 no such table 错误
             with self.engine.begin() as conn:
-                conn.execute(text("UPDATE tags SET owner='admin' WHERE owner IS NULL"))
-                conn.execute(text("UPDATE message_tasks SET owner='admin' WHERE owner IS NULL"))
+                if "tags" in tables:
+                    conn.execute(text("UPDATE tags SET owner='admin' WHERE owner IS NULL"))
+                if "message_tasks" in tables:
+                    conn.execute(text("UPDATE message_tasks SET owner='admin' WHERE owner IS NULL"))
         except Exception as e:
             print_warning(f"[{self.tag}] 检查/更新隔离列(owner)失败: {e}")
     def ensure_subscription_table(self):
@@ -179,9 +182,12 @@ class Db:
                         conn.execute(text(f"CREATE INDEX ix_{tbl}_tenant_id ON {tbl} (tenant_id)"))
                     print_info(f"[{self.tag}] {tbl} 已添加 tenant_id 列（多租户隔离）")
             # 历史数据回填：未设置 tenant_id 的行统一归 admin（平台初始管理员/单租户遗留）
+            # 仅对确实存在的表执行, 避免建表前连接初始化时刷 no such table 错误
             with self.engine.begin() as conn:
-                conn.execute(text("UPDATE feeds SET tenant_id='admin' WHERE tenant_id IS NULL"))
-                conn.execute(text("UPDATE articles SET tenant_id='admin' WHERE tenant_id IS NULL"))
+                if "feeds" in tables:
+                    conn.execute(text("UPDATE feeds SET tenant_id='admin' WHERE tenant_id IS NULL"))
+                if "articles" in tables:
+                    conn.execute(text("UPDATE articles SET tenant_id='admin' WHERE tenant_id IS NULL"))
         except Exception as e:
             print_warning(f"[{self.tag}] 检查/更新租户列(tenant_id)失败: {e}")
     def create_tables(self):

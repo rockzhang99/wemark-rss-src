@@ -1,1 +1,0 @@
-import{Ti as e,wi as t}from"./vendor-libs-C3nrRBUx.js";export{t as conf,e as language};

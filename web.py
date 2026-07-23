@@ -198,7 +198,14 @@ async def serve_vue_app(request: Request, path: str):
     # 排除API和静态文件路由
     if path.startswith(('api', 'assets', 'static')) or path in ['favicon.ico','vite.svg','logo.svg']:
         return None
-    
+
+    # 若 static/ 下存在该路径对应的真实文件(如 操作说明.html、images/*、favicon 等),
+    # 直接作为静态文件返回, 不再回退到 SPA 入口(否则会返回空白的 Vue 壳, 改动045修复)
+    _static_file = os.path.normpath(os.path.join("static", path))
+    _static_root = os.path.abspath("static")
+    if os.path.isfile(_static_file) and os.path.abspath(_static_file).startswith(_static_root + os.sep):
+        return FileResponse(_static_file)
+
     # 返回Vue入口文件，并注入部署模式全局变量（前端同步读取，避免被 Vite code-splitting 打散）
     index_path = os.path.join("static", "index.html")
     if os.path.exists(index_path):

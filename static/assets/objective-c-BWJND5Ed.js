@@ -1,1 +1,0 @@
-import{ar as e,ir as t}from"./vendor-libs-C3nrRBUx.js";export{t as conf,e as language};

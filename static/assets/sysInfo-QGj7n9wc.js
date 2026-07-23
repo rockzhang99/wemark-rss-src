@@ -1,0 +1,1 @@
+import{t as e}from"./layout-vendor-B9B4rPsm.js";var t=async()=>await e.get(`/wx/sys/info`),n=async()=>await e.get(`/wx/sys/resources`),r=async()=>await e.post(`/wx/sys/article/refresh`);export{n,r,t};

@@ -95,8 +95,15 @@ class Config:
                     pattern = re.compile(r'\$\{([^}:]+)(?::-([^}]*))?\}')
                     def replace_match(match):
                         var_name = match.group(1)
-                        default_value = match.group(2)
-                        return os.getenv(var_name, default_value) if default_value is not None else os.getenv(var_name, '')
+                        default_value = match.group(2)  # None 表示 ${VAR} 无默认值
+                        val = os.getenv(var_name)
+                        if val is None:
+                            # 变量未设置: 有默认值用默认值, 否则返回空串
+                            return default_value if default_value is not None else ''
+                        if val == '' and default_value is not None:
+                            # ${VAR:-default}: 空值也回退默认值 (Bash 语义)
+                            return default_value
+                        return val
                     return pattern.sub(replace_match, data)
                 except:
                     return data

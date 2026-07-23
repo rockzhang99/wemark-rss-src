@@ -1,0 +1,1 @@
+import{Gt as e,Wt as t}from"./vendor-libs-nQjAEl-2.js";export{t as conf,e as language};

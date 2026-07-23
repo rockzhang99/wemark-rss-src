@@ -16,6 +16,8 @@ from .cascade_node import CascadeNode, CascadeSyncLog
 from .cascade_task_allocation import CascadeTaskAllocation
 # 导入过滤规则模型
 from .filter_rule import FilterRule
+# 导入标签模型（此前遗漏导入, 导致 create_all 未建 tags 表, 反复报 no such table: tags）
+from .tags import Tags
 # 导入订阅关系模型（多用户隔离）
 from .subscription import Subscription
 # 导入用户微信授权模型（每用户各自授权）

@@ -1,0 +1,1 @@
+import{bi as e,xi as t}from"./vendor-libs-nQjAEl-2.js";export{e as conf,t as language};

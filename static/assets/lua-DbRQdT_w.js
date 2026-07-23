@@ -1,0 +1,1 @@
+import{vr as e,yr as t}from"./vendor-libs-nQjAEl-2.js";export{e as conf,t as language};

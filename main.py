@@ -12,27 +12,134 @@ if sys.platform == 'win32':
 if getattr(sys, 'frozen', False):
     # 切换到 exe 所在目录, 保证相对路径 config.yaml / static / data 解析正确
     os.chdir(os.path.dirname(sys.executable))
+    # 打包后资源位于 sys._MEIPASS (_internal/), 运行时相对路径按此解析
+    _base = getattr(sys, '_MEIPASS', os.path.dirname(sys.executable))
+
+    # === 运行日志落盘 (仅打包态) ===
+    # 把 stdout/stderr 用 TeeStream 同时写控制台与 data/wemark.log, 避免日志只在控制台闪过
+    try:
+        os.makedirs('data', exist_ok=True)
+        _log = os.path.abspath(os.path.join('data', 'wemark.log'))
+        # 简单轮转: 超过 5MB 则备份为 wemark.log.1 (覆盖旧备份)
+        if os.path.exists(_log) and os.path.getsize(_log) > 5 * 1024 * 1024:
+            try:
+                os.replace(_log, _log + '.1')
+            except OSError:
+                pass
+        _logf = open(_log, 'a', encoding='utf-8', buffering=1)
+
+        class _Tee:
+            def __init__(self, con, f):
+                self._con, self._f = con, f
+
+            def write(self, d):
+                self._con.write(d)
+                try:
+                    self._f.write(d)
+                    self._f.flush()
+                except Exception:
+                    pass
+
+            def flush(self):
+                self._con.flush()
+                try:
+                    self._f.flush()
+                except Exception:
+                    pass
+
+        sys.stdout = _Tee(sys.stdout, _logf)
+        sys.stderr = _Tee(sys.stderr, _logf)
+        print(f"[BOOT] 运行日志已重定向至 {_log}")
+    except Exception as _e:
+        print(f"[BOOT] 日志落盘初始化失败(忽略): {_e}")
 
     # 首次运行: 从模板生成 config.yaml (避免把开发机敏感配置打进安装包)
-    if not os.path.exists('config.yaml') and os.path.exists('config.example.yaml'):
-        try:
-            shutil.copy('config.example.yaml', 'config.yaml')
-            print("[BOOT] 已从 config.example.yaml 生成 config.yaml")
-        except Exception as e:
-            print(f"[BOOT] 生成 config.yaml 失败: {e}")
+    if not os.path.exists('config.yaml'):
+        _tmpl = os.path.join(_base, 'config.example.yaml')
+        if os.path.exists(_tmpl):
+            try:
+                shutil.copy(_tmpl, 'config.yaml')
+                print("[BOOT] 已从 config.example.yaml 生成 config.yaml")
+            except Exception as e:
+                print(f"[BOOT] 生成 config.yaml 失败: {e}")
+        else:
+            print("[BOOT] 未找到 config.example.yaml 模板")
 
-    # 首次运行: 自动安装 Playwright 浏览器(若缺失), 安装包本身不含浏览器以保持小巧
-    _marker = os.path.join('data', '.playwright_installed')
-    if not os.path.exists(_marker):
+    # 静态资源: 始终从 _internal 同步到 CWD(覆盖更新), 供 web.py 以相对路径挂载。
+    # 注意: 不能用"仅缺失时解包"——已安装版本 CWD 里已有旧 static/, 重装新包若不覆盖,
+    # 前端构建更新(如 App.vue 改动)不会生效(改动045修复)。
+    _src_static = os.path.join(_base, 'static')
+    if os.path.exists(_src_static):
         try:
-            os.makedirs('data', exist_ok=True)
-            print("[BOOT] 首次启动: 自动下载 Playwright Chromium (仅需联网一次) ...")
-            import subprocess
-            subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"],
-                           check=False)
-            open(_marker, 'w').close()
+            shutil.copytree(_src_static, 'static', dirs_exist_ok=True)
+            print("[BOOT] 已同步静态资源 static/")
         except Exception as e:
-            print(f"[BOOT] Playwright 浏览器自动安装失败(可稍后手动执行): {e}")
+            print(f"[BOOT] 同步 static 失败: {e}")
+
+    # 自动补齐缺失的 Playwright 浏览器(自解决, 不再依赖 marker 跳过):
+    # 微信 driver 默认用 webkit, PDF 工具默认用 chromium, 用户也可能在 config 切到 firefox,
+    # 故首次/缺件时把三种浏览器都确保装好; 每次启动只检测真实缺失项, 缺哪个装哪个。
+    #
+    # 关键坑(改动043修正): frozen 态与 dev 态的浏览器查找目录【完全不同】, 检测必须与运行时一致,
+    # 否则会误判"已齐备"而漏装:
+    #   - frozen 态: Playwright 的 PyInstaller hook 让浏览器只在【包内】.local-browsers 查找
+    #     (PLAYWRIGHT_BROWSERS_PATH=0 语义, 即 E:\WeMark-RSS\_internal\playwright\driver\package\.local-browsers),
+    #     绝不查全局目录。故检测/安装都必须针对包内, 并在 install 前显式设 PLAYWRIGHT_BROWSERS_PATH=0。
+    #   - dev 态: 浏览器在【全局】AppData/Local/ms-playwright, 保持默认(不设 env)即可。
+    try:
+        _frozen = getattr(sys, 'frozen', False) or hasattr(sys, '_MEIPASS')
+        if _frozen:
+            # 冻结态: 浏览器装到包内 .local-browsers, install 与运行走同一路径
+            os.environ['PLAYWRIGHT_BROWSERS_PATH'] = '0'
+            import playwright as _pw_pkg
+            _pw_dir = os.path.dirname(_pw_pkg.__file__)
+            _browsers_path = os.path.join(_pw_dir, 'driver', 'package', '.local-browsers')
+        else:
+            # 开发态: 浏览器在全局目录, 保持默认(不设 PLAYWRIGHT_BROWSERS_PATH)
+            import playwright as _pw_pkg
+            _pw_dir = os.path.dirname(_pw_pkg.__file__)
+            _browsers_path = (os.path.join(os.path.expanduser('~'), 'AppData', 'Local', 'ms-playwright')
+                              if os.name == 'nt'
+                              else os.path.join(os.path.expanduser('~'), '.cache', 'ms-playwright'))
+
+        def _browser_present(b: str) -> bool:
+            return os.path.isdir(_browsers_path) and any(
+                d.startswith(b + '-') for d in os.listdir(_browsers_path))
+
+        _browsers = ['chromium', 'firefox', 'webkit']
+        _missing = [b for b in _browsers if not _browser_present(b)]
+        if _missing:
+            os.makedirs('data', exist_ok=True)
+            print(f"[BOOT] 自动补齐缺失的 Playwright 浏览器: {', '.join(_missing)} (仅需联网一次) ...")
+            # 关键: 用 playwright.__main__.main() 触发安装。该函数内部执行
+            # subprocess.run([node驱动, cli.js, *sys.argv[1:]]) —— 调的是 playwright
+            # 自带的 node 驱动(不是本 exe), 天然无递归; 且 frozen 下不涉及 `-c`。
+            # 注意: main() 按 sys.argv[1:] 拼命令, 故临时替换 argv 为 install <browser>。
+            try:
+                from playwright.__main__ import main as _pw_install
+            except ImportError:
+                from playwright.cli import main as _pw_install  # 兼容旧版 playwright
+            _saved_argv = sys.argv
+            _all_ok = True
+            for _b in _missing:
+                try:
+                    sys.argv = ['playwright', 'install', _b]
+                    _pw_install()
+                except SystemExit:
+                    pass  # playwright 安装完成时内部会 sys.exit(returncode), 忽略
+                except Exception as _e:
+                    print(f"[BOOT] 浏览器 {_b} 下载失败(可稍后手动执行 playwright install {_b}): {_e}")
+                    _all_ok = False
+            sys.argv = _saved_argv
+            if _all_ok:
+                # marker 仅作记录, 真正是否跳过由上面的缺失检测决定
+                open(os.path.join('data', '.playwright_installed'), 'w').close()
+            else:
+                print("[BOOT] 部分浏览器下载失败, 下次启动将自动重试")
+        else:
+            print(f"[BOOT] Playwright 浏览器已齐备(chromium/firefox/webkit @ {_browsers_path}), 跳过下载")
+    except Exception as e:
+        print(f"[BOOT] Playwright 浏览器检测/安装异常(可稍后手动执行 playwright install): {e}")
 
 from core.config import cfg
 

@@ -14,7 +14,12 @@ import os
 from core.print import print_info, print_error
 def init_user(_db: Db):
     try:
-      username,password=os.getenv("USERNAME", "admin"),os.getenv("PASSWORD", "admin@123")
+      # 注意: 绝不能用系统自带的 USERNAME 环境变量取默认管理员账号!
+      # Windows 默认存在 USERNAME=Administrator, 若用 os.getenv("USERNAME","admin")
+      # 会取到 Administrator 而非 admin, 导致登录 admin/admin@123 失败(改动042修复)。
+      # 改用带命名空间前缀 WEMARK_ADMIN_USER / WEMARK_ADMIN_PASS, 默认 admin / admin@123。
+      username = os.getenv("WEMARK_ADMIN_USER", "admin")
+      password = os.getenv("WEMARK_ADMIN_PASS", os.getenv("PASSWORD", "admin@123"))
       session=_db.get_session()
       
       # 检查用户是否已存在
@@ -59,8 +64,12 @@ def sync_models():
          from data_sync import DatabaseSynchronizer
          DB.create_tables()
          time.sleep(3)
-         synchronizer = DatabaseSynchronizer(db_url=cfg.get("db",""))
-         synchronizer.sync()
+         # 打包(frozen)态下源码目录 core/models 不可扫描, 且建表已由 DB.create_tables() 完成,
+         # 故跳过 DatabaseSynchronizer(否则报找不到 core/models 路径); 开发态保留原行为
+         import sys
+         if not getattr(sys, 'frozen', False):
+             synchronizer = DatabaseSynchronizer(db_url=cfg.get("db",""))
+             synchronizer.sync()
          print_info("模型同步完成")
 
      
