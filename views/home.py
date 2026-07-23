@@ -58,17 +58,25 @@ async def home_view(
         
     except Exception as e:
         print(f"获取首页数据错误: {str(e)}")
-        # 读取模板文件
-        template_path = base.home_template
-        with open(template_path, 'r', encoding='utf-8') as f:
-            template_content = f.read()
+        # 兜底: 即便模板/配置缺失也绝不抛 500(云端公共页容错, 改动046补充)。
+        # 原异常分支里 open(base.home_template) 在文件缺失时会 FileNotFoundError 逃逸导致 500,
+        # 这里再包一层 try, 失败时降级为纯文本错误页。
+        try:
+            template_path = base.home_template
+            with open(template_path, 'r', encoding='utf-8') as f:
+                template_content = f.read()
         
-        parser = TemplateParser(template_content, template_dir=base.public_dir)
-        html_content = parser.render({
-            "site": base.site,
-            "error": f"加载数据时出现错误: {str(e)}",
-            "breadcrumb": [{"name": "首页", "url": "/views/home"}]
-        })
-        
-        return HTMLResponse(content=html_content)
+            parser = TemplateParser(template_content, template_dir=base.public_dir)
+            html_content = parser.render({
+                "site": base.site,
+                "error": f"加载数据时出现错误: {str(e)}",
+                "breadcrumb": [{"name": "首页", "url": "/views/home"}]
+            })
+            return HTMLResponse(content=html_content)
+        except Exception as e2:
+            print(f"首页错误页渲染失败(已降级为纯文本): {str(e2)}")
+            return HTMLResponse(
+                content=f"<h1>首页暂时不可用</h1><p>加载数据时出现错误: {str(e)}</p>",
+                status_code=200,
+            )
 
