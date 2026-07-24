@@ -42,14 +42,15 @@ from apis.filter_rule import router as filter_rule_router
 from apis.task_queue import router as task_queue_router
 from apis.proxy import router as proxy_router
 
-# 仅本地 Agent 模式需要的微信相关路由/视图（云端排除，避免 import driver）
+# views_router(含 /views/home 与解耦后的 mps/tags/articles) 云端与本地都需要(改动049),
+# 无条件导入; 其余微信驱动相关路由仅本地 Agent 模式导入(云端排除, 避免 import driver)。
+from views import router as views_router
 if not CLOUD:
     from apis.article import router as article_router
     from apis.mps import router as wx_router
     from apis.sys_info import router as sys_info_router
     from apis.export import router as export_router
     from apis.env_exception import router as env_exception_router
-    from views import router as views_router
 
 # 云端公开首页（无需认证，游客可访问）
 # 直接加载 views/home.py 模块文件，绕过 views/__init__.py（它会 import articles/tags/mps 等依赖 driver 的子模块）。
@@ -175,16 +176,14 @@ feeds_router.include_router(feed_router)
 app.include_router(api_router)
 app.include_router(resource_router)
 app.include_router(feeds_router)
-if not CLOUD:
-    app.include_router(views_router)
+# /views/home 与 /views/mps|tags|articles 由 views_router 统一注册(改动049: 云端也注册)
+app.include_router(views_router)
 
 # 公开首页（无需认证，游客可访问）。
-# 本地 Agent：/views/home 已由上面的 views_router 注册，这里不再重复注册（避免重复路由）。
-# 云端：views_router 因依赖已删除的 driver 子模块而被排除，故单独注册解耦后的 home_view_router
-# 提供 /views/home（views/base 已用 _resolve_cover_url 替代 driver.wxarticle，云端安全，改动046）。
-# home_view_router 为 None 时（加载失败）跳过，/views/home 回退到 SPA 入口。
-if home_view_router is not None and CLOUD:
-    app.include_router(home_view_router)
+# 改动049: 云端现已解耦 driver 并保留 views/mps|tags|articles 模块,
+# /views/home 与 /views/mps|tags|articles 均由上方无条件注册的 views_router 提供,
+# 不再单独注册 home_view_router(避免 /views/home 重复路由)。下方 home_view_router 的
+# importlib 加载逻辑保留作兜底, 但此处不再注册。
 
 # 静态文件服务配置
 app.mount("/assets", StaticFiles(directory="static/assets"), name="assets")

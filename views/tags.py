@@ -11,7 +11,7 @@ from core.models.feed import Feed
 from core.models.article import Article
 from core.lax.template_parser import TemplateParser
 from views.config import base
-from driver.wxarticle import Web
+from views.base import _resolve_cover_url, _resolve_description
 from core.cache import cache_view, clear_cache_pattern
 # 创建路由器
 router = APIRouter(tags=["标签"])
@@ -62,7 +62,7 @@ async def tags_view(
             tag_data = {
                 "id": tag.id,
                 "name": tag.name,
-                "cover": Web.get_image_url(tag.cover) if tag.cover else "",
+                "cover": _resolve_cover_url(tag.cover) if tag.cover else "",
                 "intro": tag.intro,
                 "mp_count": mp_count,
                 "article_count": article_count,
@@ -191,9 +191,9 @@ async def tag_detail_view(
                 article_data = {
                     "id": article.id,
                     "title": article.title,
-                    "description": article.description or Web.get_description(article.content),
-                    "pic_url": Web.get_image_url(article.pic_url),
-                    "mp_cover": Web.get_image_url(feed.mp_cover) if feed else "",
+                    "description": article.description or _resolve_description(article.content),
+                    "pic_url": _resolve_cover_url(article.pic_url),
+                    "mp_cover": _resolve_cover_url(feed.mp_cover) if feed else "",
                     "url": article.url,
                     "publish_time": datetime.fromtimestamp(article.publish_time).strftime('%Y-%m-%d %H:%M') if article.publish_time else "",
                     "mp_name": feed.mp_name if feed else "未知公众号",
@@ -210,7 +210,7 @@ async def tag_detail_view(
             "mp_count": len(mps_ids),
             "article_count": total,
             "sync_time": datetime.fromtimestamp(tag.sync_time).strftime('%Y-%m-%d %H:%M') if tag.sync_time else "未同步",
-            "mps": [{"id": mp.id, "name": mp.mp_name, "cover": Web.get_image_url(mp.mp_cover)} for mp in mps_info]
+            "mps": [{"id": mp.id, "name": mp.mp_name, "cover": _resolve_cover_url(mp.mp_cover)} for mp in mps_info]
         }
         
         # 计算分页信息

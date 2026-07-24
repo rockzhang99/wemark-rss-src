@@ -5,9 +5,9 @@ from fastapi.responses import HTMLResponse
 from core.db import DB
 from core.models.feed import Feed
 from core.models.article import Article
-# 注意: 云端 cloud_strip 会删除 driver。get_mps_view/get_tags_view 原本依赖 driver.wxarticle.Web
-# 取封面图URL, 已改为云端安全的 _resolve_cover_url(改动046); 仅 process_content_images 仍惰性
-# import driver(只被本地 agent 文章详情页调用, 云端不触发)。
+# 云端 cloud_strip 会删除 driver。原 views.base 中 get_mps_view/get_tags_view/process_content_images
+# 依赖 driver.wxarticle.Web；现已全部解耦为云端安全函数(_resolve_cover_url/_resolve_description/
+# process_content_images 纯 BeautifulSoup 版, 改动046/049/050), 云端可直接 import views.base。
 from datetime import datetime
 from core.models.tags import Tags
 import json
@@ -19,6 +19,15 @@ def _resolve_cover_url(content):
     if isinstance(content, str) and content.startswith(("http://", "https://")):
         return content
     return ""
+
+def _resolve_description(content):
+    """云端安全版描述提取: 不依赖 driver.wxarticle(云端 cloud_strip 已删除 driver)。
+    去 HTML 标签取纯文本前 200 字(改动049)。"""
+    if not content:
+        return ""
+    import re
+    text = re.sub(r"<[^>]+>", "", str(content))
+    return text[:200]
 
 #获取公众号视图数据
 def get_mps_view(
@@ -186,8 +195,25 @@ def _render_template_with_error(template_path: str, error_msg: str, breadcrumb: 
         return HTMLResponse(content=f"<h1>系统错误</h1><p>{error_msg}</p>")
 
 def process_content_images(content: str) -> str:
-    """处理文章内容中的图片链接，添加前缀"""
-    from driver.wxarticle import Web
+    """处理文章内容中的图片链接(云端安全版, 改动050)。
+    等价于 driver.wxarticle.Web.proxy_images(content, isProxy=False):
+    优先用 data-src 填充 src、移除懒加载属性(data-type/data-ratio/data-w);
+    仅处理 http(s) 图片 URL, 不做代理(与本地 agent 行为一致)。不再 import driver。"""
     if not content:
         return content
-    return Web.proxy_images(content,isProxy=False)
+    try:
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(content, 'html.parser')
+        for img in soup.find_all('img'):
+            img_url = img.get('data-src') or img.get('src')
+            if img_url and img_url.startswith(('http://', 'https://')):
+                img['src'] = img_url
+                if img.has_attr('data-src'):
+                    img['data-src'] = img_url
+                for attr in ('data-type', 'data-ratio', 'data-w'):
+                    if img.has_attr(attr):
+                        del img[attr]
+        return str(soup)
+    except Exception:
+        # 解析失败原样返回, 不影响详情页主流程
+        return content

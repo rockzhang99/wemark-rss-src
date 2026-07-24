@@ -13,7 +13,7 @@ from core.models.tags import Tags
 from apis.base import format_search_kw
 from core.lax.template_parser import TemplateParser
 from views.config import base
-from driver.wxarticle import Web
+from views.base import _resolve_cover_url, _resolve_description
 from core.cache import cache_view, clear_cache_pattern, data_cache
 from sqlalchemy.orm import defer
 
@@ -109,14 +109,14 @@ async def articles_view(
             article_data = {
                 "id": article.id,
                 "title": article.title,
-                "description": article.description or Web.get_description(article.content),
-                "pic_url": Web.get_image_url(article.pic_url),
+                "description": article.description or _resolve_description(article.content),
+                "pic_url": _resolve_cover_url(article.pic_url),
                 "url": article.url,
                 "publish_time": datetime.fromtimestamp(article.publish_time).strftime('%Y-%m-%d %H:%M') if article.publish_time else "",
                 "created_at": article.created_at.strftime('%Y-%m-%d %H:%M') if article.created_at else "",
                 "mp_name": feed.mp_name if feed else "未知公众号",
                 "mp_id": article.mp_id,
-                "mp_cover": Web.get_image_url(feed.mp_cover) if feed else "",
+                "mp_cover": _resolve_cover_url(feed.mp_cover) if feed else "",
                 "is_read": bool(article.is_read),
             }
             article_list.append(article_data)
@@ -184,7 +184,7 @@ async def articles_view(
         feed_info = feed_dict.get(mp_id) if mp_id else None
         info = {
             "mp_name": feed_info.mp_name if feed_info else "",
-            "mp_cover": Web.get_image_url(feed_info.mp_cover) if feed_info else "",
+            "mp_cover": _resolve_cover_url(feed_info.mp_cover) if feed_info else "",
             "mp_intro": feed_info.mp_intro if feed_info else "",
             "mp_id": mp_id,
         } if feed_info else {}

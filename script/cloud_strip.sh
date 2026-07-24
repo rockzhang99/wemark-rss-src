@@ -14,10 +14,10 @@ echo "[cloud-strip] 开始裁剪微信驱动相关代码 ..."
 rm -rf core/wx core/article_content.py
 rm -f  jobs/mps.py jobs/article.py jobs/failauth.py jobs/fetch_no_article.py
 rm -rf driver web_ui doc2pdf qtserver
-# 保留 views 中已解耦 driver 的首页相关模块（home/base/config/__init__），
-# 仅删除依赖微信驱动（driver）的子模块，使云端 /views/home 公开页可用。
-rm -f views/articles.py views/tags.py views/mps.py views/article_detail.py
-echo "[cloud-strip] 删除完成（已保留 tools/、public/ 与 views 首页模块，云端运行时依赖它们）。"
+# 保留 views 中已解耦 driver 的全部模块（home/base/config/__init__/mps/tags/articles/article_detail）。
+# /views/home、/views/mps、/views/tags、/views/articles、/views/article/{id} 云端公开页均可用(改动049/050)。
+# 这些模块现已不使用 driver.wxarticle, 云端可安全保留。
+echo "[cloud-strip] 删除完成（已保留 tools/、public/ 与 views 全部公开页模块，云端运行时依赖它们）。"
 
 echo "[cloud-strip] 校验：以下模块应全部显示 MISSING（云端不应存在）"
 python - <<'PY'
